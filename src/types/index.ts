@@ -70,3 +70,16 @@ export interface AuthUser {
   id: string
   email: string
 }
+
+export interface Pergunta {
+  id: string
+  aula_id: string
+  aluno_id: string
+  pergunta: string
+  resposta?: string | null
+  respondido_por?: string | null
+  respondido_em?: string | null
+  criado_em: string
+  profiles?: { nome: string } | null
+  respondido_por_profile?: { nome: string } | null
+}

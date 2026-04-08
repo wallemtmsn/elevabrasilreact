@@ -1,6 +1,6 @@
 # Eleva Brasil — Plataforma de Treinamentos e Consultorias
 
-Aplicação web da **Eleva Brasil**, empresa especializada em treinamentos e consultorias localizada em São João da Barra – RJ. A plataforma oferece landing page com catálogo de 24 cursos, página de detalhes de curso estilo Udemy, área do aluno e painel administrativo.
+Aplicação web da **Eleva Brasil**, empresa especializada em treinamentos e consultorias localizada em São João da Barra – RJ. A plataforma oferece landing page com catálogo de 24 cursos, página de detalhes de curso estilo Udemy, área do aluno com player de aulas e painel administrativo completo.
 
 Desenvolvido por **NEXFORM - Transformação Digital**.
 
@@ -38,13 +38,13 @@ src/
 │       ├── Input.tsx
 │       └── Modal.tsx
 ├── contexts/
-│   ├── AuthContext.tsx       # Sessão do usuário + logout imediato
+│   ├── AuthContext.tsx       # Sessão do usuário — getSession + onAuthStateChange sem double fetch
 │   └── ToastContext.tsx      # Notificações globais
 ├── lib/
-│   └── supabase.ts          # Cliente Supabase
+│   └── supabase.ts          # Cliente Supabase (localStorage para sessão)
 ├── pages/
 │   ├── Home/
-│   │   ├── index.tsx        # Landing page completa (ver seções abaixo)
+│   │   ├── index.tsx        # Landing page completa + CourseModal com info dos cursos
 │   │   ├── LoginModal.tsx   # Modal de login
 │   │   └── RegisterModal.tsx# Modal de cadastro (CPF, telefone, senha)
 │   ├── CursoLanding/        # Página de detalhes do curso (pública)
@@ -59,28 +59,30 @@ src/
 │   │       ├── Perfil.tsx
 │   │       └── Seguranca.tsx
 │   ├── CursoPlayer/         # Player de aulas (rota protegida)
-│   │   └── index.tsx        # Vídeo + sidebar de currículo com progresso
+│   │   └── index.tsx        # Vídeo + sidebar de currículo + abas Visão Geral e Q&A
 │   ├── Admin/               # Área administrativa (rota admin)
 │   │   ├── index.tsx
 │   │   └── sections/
 │   │       ├── Dashboard.tsx
 │   │       ├── CursosAdmin.tsx
 │   │       ├── Alunos.tsx
-│   │       ├── Matriculas.tsx
-│   │       └── ConteudoAdmin.tsx
+│   │       ├── MatriculasAdmin.tsx
+│   │       ├── ConteudoAdmin.tsx
+│   │       └── PerguntasAdmin.tsx  # Q&A agrupado por curso com resposta inline
 │   └── Privacidade/         # Política de privacidade
 ├── routes/
 │   ├── AppRoutes.tsx        # Definição de rotas
-│   ├── ProtectedRoute.tsx   # Redireciona não autenticados
+│   ├── ProtectedRoute.tsx   # Redireciona não autenticados; admin → /admin
 │   └── AdminRoute.tsx       # Redireciona não admins
 ├── services/
 │   ├── authService.ts       # Login, cadastro, logout, troca de senha
 │   ├── cursosService.ts     # CRUD de cursos (getAll, getAtivos, getById, create, update, delete)
 │   ├── matriculasService.ts # Matrículas: liberar, revogar, listar por aluno/curso
 │   ├── modulosService.ts    # Módulos e aulas: CRUD, progresso, reordenação
+│   ├── perguntasService.ts  # Q&A: getByAula, getAll (admin), fazer, responder, deletar
 │   └── profileService.ts    # Atualização de perfil
 ├── types/
-│   └── index.ts             # Interfaces: Profile, Curso, Modulo, Aula, ProgressoAula, Toast
+│   └── index.ts             # Interfaces: Profile, Curso, Modulo, Aula, ProgressoAula, Pergunta, Toast
 └── utils/
     ├── courseDataMap.ts     # Mapa estático dos 24 cursos (imagem, normas, objetivos por slug)
     ├── formatters.ts        # formatCurrency, buildWhatsAppUrl, formatCPF, formatPhone
@@ -96,31 +98,48 @@ src/
 | `/` | Público | Landing page completa |
 | `/cursos/:id` | Público | Página de detalhes do curso (estilo Udemy) |
 | `/politica-de-privacidade` | Público | Política de privacidade |
-| `/painel` | Aluno autenticado | Dashboard do aluno |
+| `/painel` | Aluno autenticado | Dashboard do aluno (admin é redirecionado para `/admin`) |
 | `/curso/:id` | Aluno autenticado | Player de aulas do curso |
 | `/admin` | Admin autenticado | Painel administrativo |
 
 ---
 
+## Funcionalidades do Player de Aulas (`/curso/:id`)
+
+- Player de vídeo com suporte a YouTube, Vimeo e MP4/WebM direto
+- Sidebar com currículo completo (módulos + aulas) e progresso individual
+- Marcar/desmarcar aulas como concluídas com auto-avanço
+- Barra de progresso geral em porcentagem
+- **Aba Visão Geral** — descrição do curso, carga horária, nº de módulos e aulas
+- **Aba Perguntas e Respostas** — aluno faz perguntas por aula; admin responde pelo painel
+
+---
+
+## Painel Administrativo (`/admin`)
+
+| Seção | Descrição |
+|---|---|
+| **Dashboard** | Métricas gerais (alunos, cursos, matrículas) |
+| **Alunos** | Listagem de alunos cadastrados |
+| **Cursos** | CRUD de cursos |
+| **Conteúdo** | Gerenciamento de módulos e aulas por curso |
+| **Matrículas** | Liberar e revogar acesso de alunos aos cursos |
+| **Perguntas e Respostas** | Q&A agrupado por curso — responder e excluir perguntas com badge de pendências |
+
+---
+
 ## Página de Detalhes do Curso (`/cursos/:id`)
 
-Página pública inspirada no layout da Udemy, criada a partir dos dados do Supabase combinados com o mapa estático `courseDataMap.ts`.
+Página pública inspirada no layout da Udemy.
 
-**Seções:**
-- **Hero escuro** — breadcrumb, título, descrição, badges de categoria e carga horária
-- **Sidebar sticky** (desktop) — preview do curso, preço, botão CTA, lista de benefícios
-- **O que você vai aprender** — grid de 2 colunas com objetivos de aprendizagem
-- **Conteúdo do curso** — accordion de módulos e aulas com totalizadores; exibe banner informativo se o currículo ainda não foi cadastrado
-- **Normas regulamentadoras** — lista das NRs aplicáveis ao curso
-- **Instrutor** — card institucional da Eleva Brasil
-- **Sticky bottom bar** (mobile) — preço + CTA de matrícula
+**Seções:** Hero, sidebar sticky com CTA, "O que você vai aprender", currículo accordion, normas regulamentadoras, card de instrutor, sticky bottom bar (mobile).
 
 **Lógica do botão CTA:**
 
 | Situação | Comportamento |
 |---|---|
-| Não autenticado | Abre WhatsApp com mensagem de interesse no curso |
-| Autenticado + matriculado | Navega para `/curso/:id` (player de aulas) |
+| Não autenticado | Abre WhatsApp com mensagem de interesse |
+| Autenticado + matriculado | Navega para `/curso/:id` (player) |
 | Autenticado + não matriculado | Abre WhatsApp para solicitar matrícula |
 
 ---
@@ -129,15 +148,13 @@ Página pública inspirada no layout da Udemy, criada a partir dos dados do Supa
 
 | Seção | Descrição |
 |---|---|
-| **Hero** | Badge "Matrículas Abertas", título com gradiente, CTAs e stats (24 cursos, 10 anos, 200+ alunos, 8 NRs) |
-| **Sobre** | Texto institucional com lista de diferenciais e cards de Missão / Visão / Valores |
-| **Banner de Serviços** | Faixa navy com ícones: Pessoas e Empresas, Online e Presencial, Certificação, Consultorias |
-| **Cursos** | Grid de 24 cursos com filtro por categoria (Todos / Operacional / Desenvolvimento / NR). Clique navega para a página de detalhes `/cursos/:id` |
+| **Hero** | Badge "Matrículas Abertas", título, CTAs e stats |
+| **Sobre** | Texto institucional, diferenciais, Missão/Visão/Valores |
+| **Banner de Serviços** | Pessoas e Empresas, Online e Presencial, Certificação, Consultorias |
+| **Cursos** | Grid de 24 cursos com filtro por categoria. Clique abre modal com info do curso (descrição, normas, botão de interesse via WhatsApp) |
 | **Equipe** | 6 cards de expertise dos instrutores |
-| **Contato** | Cards de telefone/email/endereço, redes sociais, formulário que abre WhatsApp preenchido, mapa embed |
+| **Contato** | Telefone/email/endereço, redes sociais, formulário WhatsApp, mapa embed |
 | **Footer** | 4 colunas: marca, contato, serviços, redes sociais + crédito NEXFORM |
-| **Modais** | ApoioModal (informações da NEXFORM), LoginModal, RegisterModal |
-| **Flutuantes** | Botão WhatsApp (canto direito) e Voltar ao topo (canto esquerdo) |
 
 ---
 
@@ -216,9 +233,25 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 | `concluida` | boolean | Se a aula foi concluída |
 | `concluida_em` | timestamp? | Data de conclusão |
 
+### `perguntas_aulas`
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | uuid | Identificador |
+| `aula_id` | uuid | FK para `aulas` |
+| `aluno_id` | uuid | FK para `profiles` |
+| `pergunta` | string | Texto da pergunta |
+| `resposta` | string? | Resposta do admin |
+| `respondido_por` | uuid? | FK para `profiles` (admin) |
+| `respondido_em` | timestamp? | Data da resposta |
+| `criado_em` | timestamp | Data da pergunta |
+
+**RLS aplicado:** alunos inserem apenas as próprias perguntas; admins podem responder e deletar qualquer pergunta; todos podem visualizar.
+
 ---
 
 ## Configuração do Ambiente
+
+O projeto inclui `.gitignore` na raiz protegendo `.env`, `node_modules/`, `dist/` e pastas externas como `playwright-mcp-main/`.
 
 Crie um arquivo `.env` na raiz do projeto:
 
@@ -245,6 +278,19 @@ npm run build
 # Pré-visualizar build
 npm run preview
 ```
+
+---
+
+## Notas Técnicas
+
+### Autenticação
+- **Login sem travamento** — `LoginModal` aguarda o `user` ser confirmado pelo `AuthContext` via `useEffect` antes de fechar e navegar. Elimina o race condition onde `ProtectedRoute` via `user=null` e redirecionava de volta para `/`
+- **Sem loop ao trocar de aba** — `AuthContext.onAuthStateChange` não seta `loading=true` após a carga inicial. Eventos `TOKEN_REFRESHED` (disparados pelo Supabase ao voltar de outra aba do navegador) são tratados silenciosamente sem travar a tela
+- **Admin redirecionado corretamente** — `ProtectedRoute` detecta `isAdmin` e redireciona para `/admin`; `LoginModal` também navega direto para `/admin` ao logar como admin, sem passar pelo `/painel`
+- **Sessão armazenada em localStorage** — sem uso de cookies; padrão do Supabase client para SPAs
+
+### Painel Admin
+- **Criação de aulas sem travamento** — `reloadModulos()` no `ConteudoAdmin` foi desacoplado do bloco `try/finally`, garantindo que `setSaving(false)` sempre execute independente do resultado do reload
 
 ---
 

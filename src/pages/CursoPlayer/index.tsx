@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { cursosService } from '@/services/cursosService'
 import { modulosService } from '@/services/modulosService'
-import type { Curso, Modulo, Aula } from '@/types'
+import { perguntasService } from '@/services/perguntasService'
+import type { Curso, Modulo, Aula, Pergunta } from '@/types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ function CheckIcon({ done }: { done: boolean }) {
 export function CursoPlayerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
 
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<Modulo[]>([])
@@ -89,6 +90,15 @@ export function CursoPlayerPage() {
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [salvando, setSalvando] = useState(false)
+
+  // Abas
+  const [abaAtual, setAbaAtual] = useState<'visao-geral' | 'qa'>('visao-geral')
+  const [perguntas, setPerguntas] = useState<Pergunta[]>([])
+  const [loadingQA, setLoadingQA] = useState(false)
+  const [novaPergunta, setNovaPergunta] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [respondendoId, setRespondendoId] = useState<string | null>(null)
+  const [textoResposta, setTextoResposta] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -120,6 +130,41 @@ export function CursoPlayerPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [id, user])
+
+  // Carrega perguntas ao trocar de aula ou ativar a aba
+  useEffect(() => {
+    if (!aulaAtual || abaAtual !== 'qa') return
+    setLoadingQA(true)
+    perguntasService.getByAula(aulaAtual.id)
+      .then(setPerguntas)
+      .catch(() => {})
+      .finally(() => setLoadingQA(false))
+  }, [aulaAtual?.id, abaAtual])
+
+  const handleFazerPergunta = async () => {
+    if (!novaPergunta.trim() || !aulaAtual || !user) return
+    setEnviando(true)
+    try {
+      await perguntasService.fazer(aulaAtual.id, user.id, novaPergunta.trim())
+      setNovaPergunta('')
+      const updated = await perguntasService.getByAula(aulaAtual.id)
+      setPerguntas(updated)
+    } catch (err) {
+      console.error('[Q&A] Erro ao enviar pergunta:', err)
+    }
+    finally { setEnviando(false) }
+  }
+
+  const handleResponder = async (id: string) => {
+    if (!textoResposta.trim() || !user || !aulaAtual) return
+    try {
+      await perguntasService.responder(id, textoResposta.trim(), user.id)
+      setRespondendoId(null)
+      setTextoResposta('')
+      const updated = await perguntasService.getByAula(aulaAtual.id)
+      setPerguntas(updated)
+    } catch { /* silent */ }
+  }
 
   const todasAulas = getTodasAulas(modulos)
   const totalAulas = todasAulas.length
@@ -331,21 +376,192 @@ export function CursoPlayerPage() {
                 )}
               </div>
 
-              {/* Title + description */}
-              {aulaAtual ? (
-                <>
-                  <h2 className="text-xl font-bold text-steel-800 mb-2">{aulaAtual.titulo}</h2>
-                  {aulaAtual.descricao && (
+              {/* Lesson title */}
+              <h2 className="text-xl font-bold text-steel-800 mb-4">
+                {aulaAtual?.titulo || curso.titulo}
+              </h2>
+
+              {/* Tabs */}
+              <div className="border-b border-steel-200 mb-6">
+                <div className="flex">
+                  {([
+                    { id: 'visao-geral', label: 'Visão Geral' },
+                    { id: 'qa', label: `Perguntas e Respostas${perguntas.length > 0 ? ` (${perguntas.length})` : ''}` },
+                  ] as { id: 'visao-geral' | 'qa'; label: string }[]).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setAbaAtual(tab.id)}
+                      className={[
+                        'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                        abaAtual === tab.id
+                          ? 'border-navy-700 text-navy-700'
+                          : 'border-transparent text-steel-500 hover:text-steel-700',
+                      ].join(' ')}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tab: Visão Geral */}
+              {abaAtual === 'visao-geral' && (
+                <div className="space-y-5">
+                  {aulaAtual?.descricao && (
                     <p className="text-steel-500 text-sm leading-relaxed">{aulaAtual.descricao}</p>
                   )}
-                </>
-              ) : (
-                <>
-                  <h2 className="text-xl font-bold text-steel-800 mb-2">{curso.titulo}</h2>
-                  {curso.descricao && (
-                    <p className="text-steel-500 text-sm leading-relaxed">{curso.descricao}</p>
+                  <div>
+                    <h3 className="text-sm font-semibold text-steel-700 mb-3">Sobre este curso</h3>
+                    {curso.descricao && (
+                      <p className="text-steel-500 text-sm leading-relaxed mb-4">{curso.descricao}</p>
+                    )}
+                    <div className="flex flex-wrap gap-5">
+                      {curso.carga_horaria && (
+                        <div className="flex items-center gap-2 text-sm text-steel-600">
+                          <svg className="w-4 h-4 text-steel-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          {curso.carga_horaria}h de conteúdo
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-steel-600">
+                        <svg className="w-4 h-4 text-steel-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        {modulos.length} {modulos.length === 1 ? 'módulo' : 'módulos'}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-steel-600">
+                        <svg className="w-4 h-4 text-steel-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {todasAulas.length} {todasAulas.length === 1 ? 'aula' : 'aulas'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Perguntas e Respostas */}
+              {abaAtual === 'qa' && !aulaAtual && (
+                <div className="text-center py-10 text-steel-400 text-sm">
+                  Selecione uma aula no menu lateral para fazer perguntas.
+                </div>
+              )}
+
+              {abaAtual === 'qa' && aulaAtual && (
+                <div className="space-y-6">
+                  {/* Formulário */}
+                  <div className="bg-steel-50 rounded-xl p-4">
+                    <h3 className="text-sm font-semibold text-steel-700 mb-3">Fazer uma pergunta</h3>
+                    <textarea
+                      value={novaPergunta}
+                      onChange={e => setNovaPergunta(e.target.value)}
+                      placeholder="Digite sua dúvida sobre esta aula..."
+                      rows={3}
+                      className="w-full text-sm border border-steel-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent bg-white"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={handleFazerPergunta}
+                        disabled={enviando || !novaPergunta.trim()}
+                        className="px-4 py-2 bg-navy-700 text-white text-sm font-medium rounded-lg hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {enviando ? 'Enviando...' : 'Enviar pergunta'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista */}
+                  {loadingQA ? (
+                    <div className="flex items-center justify-center py-8">
+                      <svg className="animate-spin h-6 w-6 text-steel-400" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  ) : perguntas.length === 0 ? (
+                    <div className="text-center py-8 text-steel-400 text-sm">
+                      Nenhuma pergunta ainda. Seja o primeiro a perguntar!
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {perguntas.map(p => (
+                        <div key={p.id} className="border border-steel-200 rounded-xl p-4">
+                          {/* Author */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-7 h-7 rounded-full bg-navy-100 flex items-center justify-center text-xs font-bold text-navy-700 flex-shrink-0">
+                              {(p.profiles?.nome || 'A')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-steel-700">{p.profiles?.nome || 'Aluno'}</p>
+                              <p className="text-xs text-steel-400">{new Date(p.criado_em).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                          </div>
+
+                          {/* Pergunta */}
+                          <p className="text-sm text-steel-600 mb-3">{p.pergunta}</p>
+
+                          {/* Resposta ou status */}
+                          {p.resposta ? (
+                            <div className="ml-4 bg-navy-50 border border-navy-100 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="text-xs font-semibold text-navy-700 bg-navy-100 px-2 py-0.5 rounded-full">
+                                  {p.respondido_por_profile?.nome || 'Admin'}
+                                </span>
+                                {p.respondido_em && (
+                                  <span className="text-xs text-steel-400">
+                                    {new Date(p.respondido_em).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-navy-800">{p.resposta}</p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-steel-400 italic">Aguardando resposta</span>
+                              {isAdmin && (
+                                respondendoId === p.id ? (
+                                  <div className="w-full mt-2">
+                                    <textarea
+                                      value={textoResposta}
+                                      onChange={e => setTextoResposta(e.target.value)}
+                                      placeholder="Digite sua resposta..."
+                                      rows={3}
+                                      className="w-full text-sm border border-steel-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-navy-500 bg-white"
+                                    />
+                                    <div className="flex gap-2 mt-2 justify-end">
+                                      <button
+                                        onClick={() => { setRespondendoId(null); setTextoResposta('') }}
+                                        className="text-sm text-steel-500 hover:text-steel-700 px-3 py-1.5"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        onClick={() => handleResponder(p.id)}
+                                        disabled={!textoResposta.trim()}
+                                        className="px-4 py-1.5 bg-navy-700 text-white text-sm font-medium rounded-lg hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                      >
+                                        Salvar resposta
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => { setRespondendoId(p.id); setTextoResposta('') }}
+                                    className="text-xs text-navy-600 hover:text-navy-800 font-medium"
+                                  >
+                                    Responder
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </>
+                </div>
               )}
 
             </div>

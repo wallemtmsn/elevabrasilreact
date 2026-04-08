@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, Button, Input } from '@/components/ui'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
 import { authService } from '@/services/authService'
 import { isValidEmail } from '@/utils/validators'
@@ -12,6 +13,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProps) {
+  const { user, isAdmin } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
@@ -19,6 +21,16 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+
+  // Quando o AuthContext confirmar o login (user setado), fecha o modal e redireciona
+  useEffect(() => {
+    if (user && loading) {
+      setLoading(false)
+      showToast('Bem-vindo(a) de volta!', 'success')
+      onClose()
+      navigate(isAdmin ? '/admin' : '/painel')
+    }
+  }, [user])
 
   const validate = () => {
     const e: typeof errors = {}
@@ -34,14 +46,11 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
     setLoading(true)
     try {
       await authService.login(email, password)
-      showToast('Bem-vindo(a) de volta!', 'success')
-      onClose()
-      navigate('/painel')
+      // Redirecionamento feito pelo useEffect acima quando user for setado
     } catch (err: unknown) {
+      setLoading(false)
       const msg = err instanceof Error ? err.message : 'Erro ao entrar.'
       showToast(msg.includes('Invalid') ? 'E-mail ou senha incorretos.' : msg, 'error')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -49,6 +58,7 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
     setEmail('')
     setPassword('')
     setErrors({})
+    setLoading(false)
     onClose()
   }
 

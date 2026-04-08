@@ -170,12 +170,12 @@ export function ConteudoAdmin() {
         showToast('Módulo criado!', 'success')
       }
       setModalModulo(null)
-      await reloadModulos()
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Erro ao salvar módulo.', 'error')
     } finally {
       setSaving(false)
     }
+    reloadModulos()
   }
 
   async function handleDeletarModulo() {
@@ -233,12 +233,12 @@ export function ConteudoAdmin() {
         showToast('Aula criada!', 'success')
       }
       setModalAula(null)
-      await reloadModulos()
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Erro ao salvar aula.', 'error')
     } finally {
       setSaving(false)
     }
+    reloadModulos()
   }
 
   async function handleDeletarAula() {

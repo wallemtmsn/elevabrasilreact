@@ -59,18 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Mudanças de estado (login, logout, token refresh) — ignora o evento inicial
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!initialLoaded.current) return
-      setLoading(true)
+      // Não seta loading=true após carga inicial — evita loop ao trocar de aba (TOKEN_REFRESHED)
       setSession(s)
       setUser(s?.user ?? null)
       if (s?.user) {
-        const p = await fetchProfile(s.user.id)
-        setProfile(p)
+        // Só rebusca o profile em login real, não em refresh de token
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          const p = await fetchProfile(s.user.id)
+          setProfile(p)
+        }
       } else {
         setProfile(null)
       }
-      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
