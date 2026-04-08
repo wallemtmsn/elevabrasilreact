@@ -1,0 +1,79 @@
+import { supabase } from '@/lib/supabase'
+import type { Curso } from '@/types'
+
+export interface Matricula {
+  id: string
+  aluno_id: string
+  curso_id: string
+  liberado_em: string
+  liberado_por?: string | null
+}
+
+export const matriculasService = {
+  // retorna os curso_ids que o aluno tem acesso
+  async getCursoIdsByAluno(alunoId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('matriculas')
+      .select('curso_id')
+      .eq('aluno_id', alunoId)
+    if (error) throw new Error(error.message)
+    return (data || []).map(m => m.curso_id)
+  },
+
+  // retorna os cursos completos que o aluno pode acessar (apenas ativos)
+  async getCursosDoAluno(alunoId: string): Promise<Curso[]> {
+    const { data: mats, error: mErr } = await supabase
+      .from('matriculas')
+      .select('curso_id')
+      .eq('aluno_id', alunoId)
+    if (mErr) throw new Error(mErr.message)
+    if (!mats || mats.length === 0) return []
+
+    const ids = mats.map(m => m.curso_id)
+    const { data, error } = await supabase
+      .from('cursos')
+      .select('*')
+      .in('id', ids)
+      .eq('ativo', true)
+      .order('criado_em', { ascending: false })
+    if (error) throw new Error(error.message)
+    return data || []
+  },
+
+  // admin: libera um curso para um aluno
+  async liberar(alunoId: string, cursoId: string, liberadoPor: string): Promise<void> {
+    const { error } = await supabase
+      .from('matriculas')
+      .insert({ aluno_id: alunoId, curso_id: cursoId, liberado_por: liberadoPor })
+    if (error) throw new Error(error.message)
+  },
+
+  // admin: revoga acesso de um aluno a um curso
+  async revogar(alunoId: string, cursoId: string): Promise<void> {
+    const { error } = await supabase
+      .from('matriculas')
+      .delete()
+      .eq('aluno_id', alunoId)
+      .eq('curso_id', cursoId)
+    if (error) throw new Error(error.message)
+  },
+
+  // admin: conta quantos alunos têm acesso a um curso
+  async countPorCurso(cursoId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('matriculas')
+      .select('id', { count: 'exact', head: true })
+      .eq('curso_id', cursoId)
+    if (error) throw new Error(error.message)
+    return count ?? 0
+  },
+
+  // admin: busca todas as matrículas de uma vez (evita N+1)
+  async getAllMatriculas(): Promise<{ aluno_id: string; curso_id: string }[]> {
+    const { data, error } = await supabase
+      .from('matriculas')
+      .select('aluno_id, curso_id')
+    if (error) throw new Error(error.message)
+    return data || []
+  },
+}
