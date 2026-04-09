@@ -147,22 +147,27 @@ export function Alunos() {
               <table className="w-full text-sm">
                 <thead className="bg-steel-50 border-b border-steel-200">
                   <tr>
-                    {['Nome', 'E-mail', 'CPF', 'Telefone', 'Empresa', 'Função', 'Cadastro', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">{h}</th>
-                    ))}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden md:table-cell">E-mail</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden lg:table-cell">CPF</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden lg:table-cell">Telefone</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden xl:table-cell">Empresa</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">Função</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden md:table-cell">Cadastro</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-steel-100">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-steel-400">Nenhum aluno encontrado.</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-steel-400">Nenhum aluno encontrado.</td></tr>
                   ) : (
                     filtered.map(aluno => (
                       <tr key={aluno.id} className="hover:bg-steel-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-steel-700 whitespace-nowrap">{aluno.nome}</td>
-                        <td className="px-4 py-3 text-steel-500">{aluno.email}</td>
-                        <td className="px-4 py-3 text-steel-500 whitespace-nowrap">{aluno.cpf ? formatCPF(aluno.cpf) : '—'}</td>
-                        <td className="px-4 py-3 text-steel-500 whitespace-nowrap">{aluno.telefone ? formatPhone(aluno.telefone) : '—'}</td>
-                        <td className="px-4 py-3 text-steel-500">{aluno.empresa || '—'}</td>
+                        <td className="px-4 py-3 text-steel-500 hidden md:table-cell">{aluno.email}</td>
+                        <td className="px-4 py-3 text-steel-500 whitespace-nowrap hidden lg:table-cell">{aluno.cpf ? formatCPF(aluno.cpf) : '—'}</td>
+                        <td className="px-4 py-3 text-steel-500 whitespace-nowrap hidden lg:table-cell">{aluno.telefone ? formatPhone(aluno.telefone) : '—'}</td>
+                        <td className="px-4 py-3 text-steel-500 hidden xl:table-cell">{aluno.empresa || '—'}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
                             aluno.role === 'admin'
@@ -172,7 +177,7 @@ export function Alunos() {
                             {aluno.role === 'admin' ? 'Admin' : 'Aluno'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-steel-400 whitespace-nowrap">{formatDate(aluno.criado_em)}</td>
+                        <td className="px-4 py-3 text-steel-400 whitespace-nowrap hidden md:table-cell">{formatDate(aluno.criado_em)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <button onClick={() => openEdit(aluno)} className="text-navy-500 hover:text-navy-700 text-xs font-medium">Editar</button>

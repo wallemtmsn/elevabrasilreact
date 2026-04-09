@@ -218,11 +218,12 @@ export function MatriculasAdmin() {
               <table className="w-full text-sm">
                 <thead className="bg-steel-50 border-b border-steel-200">
                   <tr>
-                    {['Aluno', 'E-mail', 'CPF', 'Cadastro', 'Cursos liberados', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">Aluno</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden md:table-cell">E-mail</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden lg:table-cell">CPF</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap hidden md:table-cell">Cadastro</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-steel-500 whitespace-nowrap">Cursos liberados</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-steel-100">
@@ -240,11 +241,11 @@ export function MatriculasAdmin() {
                           <td className="px-4 py-3">
                             <p className="font-medium text-steel-700 whitespace-nowrap">{aluno.nome}</p>
                           </td>
-                          <td className="px-4 py-3 text-steel-500">{aluno.email}</td>
-                          <td className="px-4 py-3 text-steel-500 whitespace-nowrap">
+                          <td className="px-4 py-3 text-steel-500 hidden md:table-cell">{aluno.email}</td>
+                          <td className="px-4 py-3 text-steel-500 whitespace-nowrap hidden lg:table-cell">
                             {aluno.cpf ? formatCPF(aluno.cpf) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-steel-400 whitespace-nowrap">
+                          <td className="px-4 py-3 text-steel-400 whitespace-nowrap hidden md:table-cell">
                             {formatDate(aluno.criado_em)}
                           </td>
                           <td className="px-4 py-3">

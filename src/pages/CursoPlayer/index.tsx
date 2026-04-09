@@ -579,7 +579,7 @@ export function CursoPlayerPage() {
         {/* ── Curriculum sidebar ────────────────────────────────────────── */}
         <aside
           className={[
-            'flex-shrink-0 w-80 bg-white border-l border-steel-200 flex flex-col',
+            'flex-shrink-0 w-[85vw] sm:w-80 bg-white border-l border-steel-200 flex flex-col',
             'lg:relative lg:translate-x-0 lg:flex',
             // mobile: fixed from the right
             'fixed top-14 right-0 bottom-0 z-40 transition-transform duration-200',
