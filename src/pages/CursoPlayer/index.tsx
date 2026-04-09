@@ -115,7 +115,7 @@ export function CursoPlayerPage() {
       cursosService.getById(id),
       modulosService.getModulosByCurso(id),
     ])
-      .then(([c, mods]) => {
+      .then(async ([c, mods]) => {
         setCurso(c)
         setModulos(mods)
 
