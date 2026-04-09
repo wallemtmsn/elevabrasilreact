@@ -71,6 +71,34 @@ export interface AuthUser {
   email: string
 }
 
+export interface Prova {
+  id: string
+  modulo_id: string
+  titulo: string
+  criado_em: string
+  questoes?: Questao[]
+}
+
+export interface Questao {
+  id: string
+  prova_id: string
+  enunciado: string
+  alternativas: { A: string; B: string; C: string; D: string }
+  resposta_certa: 'A' | 'B' | 'C' | 'D'
+  ordem: number
+}
+
+export interface TentativaProva {
+  id: string
+  aluno_id: string
+  prova_id: string
+  respostas: Record<string, string>
+  acertos: number
+  total: number
+  aprovado: boolean
+  feita_em: string
+}
+
 export interface Pergunta {
   id: string
   aula_id: string
