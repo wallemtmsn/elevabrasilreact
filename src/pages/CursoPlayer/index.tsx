@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cursosService } from '@/services/cursosService'
 import { modulosService } from '@/services/modulosService'
 import { perguntasService } from '@/services/perguntasService'
-import type { Curso, Modulo, Aula, Pergunta } from '@/types'
+import { provasService } from '@/services/provasService'
+import { ProvaModal } from './ProvaModal'
+import type { Curso, Modulo, Aula, Pergunta, Prova } from '@/types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -91,6 +94,11 @@ export function CursoPlayerPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
+  // Provas
+  const [provasMap, setProvasMap] = useState<Record<string, Prova>>({})       // modulo_id → Prova
+  const [modulosAprovados, setModulosAprovados] = useState<Set<string>>(new Set()) // modulo_ids aprovados
+  const [provaAtiva, setProvaAtiva] = useState<{ prova: Prova; moduloTitulo: string } | null>(null)
+
   // Abas
   const [abaAtual, setAbaAtual] = useState<'visao-geral' | 'qa'>('visao-geral')
   const [perguntas, setPerguntas] = useState<Pergunta[]>([])
@@ -107,7 +115,7 @@ export function CursoPlayerPage() {
       cursosService.getById(id),
       modulosService.getModulosByCurso(id),
     ])
-      .then(([c, mods]) => {
+      .then(async ([c, mods]) => {
         setCurso(c)
         setModulos(mods)
 
@@ -118,13 +126,33 @@ export function CursoPlayerPage() {
         const primeiraAula = mods[0]?.aulas?.[0] ?? null
         setAulaAtual(primeiraAula)
 
-        // fetch progresso
+        // fetch progresso + provas em paralelo
         if (user && mods.length > 0) {
           const aulaIds = getTodasAulas(mods).map(a => a.id)
-          return modulosService.getProgresso(user.id, aulaIds).then(prog => {
-            const ids = new Set(prog.filter(p => p.concluida).map(p => p.aula_id))
-            setConcluidas(ids)
-          })
+          const moduloIds = mods.map(m => m.id)
+
+          const [prog, provas] = await Promise.all([
+            modulosService.getProgresso(user.id, aulaIds),
+            provasService.getProvasByModulos(moduloIds),
+          ])
+
+          const ids = new Set(prog.filter(p => p.concluida).map(p => p.aula_id))
+          setConcluidas(ids)
+
+          // monta mapa modulo_id → Prova
+          const pMap: Record<string, Prova> = {}
+          provas.forEach(p => { pMap[p.modulo_id] = p })
+          setProvasMap(pMap)
+
+          // verifica quais módulos já foram aprovados
+          const provaIds = provas.map(p => p.id)
+          if (provaIds.length > 0) {
+            const aprovadas = await provasService.getTentativasAprovadas(user.id, provaIds)
+            const aprovadosSet = new Set(
+              aprovadas.map(t => provas.find(p => p.id === t.prova_id)?.modulo_id).filter(Boolean) as string[]
+            )
+            setModulosAprovados(aprovadosSet)
+          }
         }
       })
       .catch(() => {})
@@ -175,6 +203,15 @@ export function CursoPlayerPage() {
   const podePrev = idxAtual > 0
   const podeNext = idxAtual < todasAulas.length - 1
 
+  // Módulo N está bloqueado se o módulo N-1 tem prova e ainda não foi aprovado
+  function isModuloBloqueado(moduloIdx: number): boolean {
+    if (moduloIdx === 0) return false
+    const moduloAnterior = modulos[moduloIdx - 1]
+    const provaAnterior = provasMap[moduloAnterior.id]
+    if (!provaAnterior) return false
+    return !modulosAprovados.has(moduloAnterior.id)
+  }
+
   function irParaAula(aula: Aula) {
     setAulaAtual(aula)
     setSidebarOpen(false)
@@ -198,7 +235,27 @@ export function CursoPlayerPage() {
         setConcluidas(prev => { const n = new Set(prev); n.delete(aulaAtual.id); return n })
       } else {
         await modulosService.marcarConcluida(user.id, aulaAtual.id)
-        setConcluidas(prev => new Set(prev).add(aulaAtual.id))
+        const novasConcluidas = new Set(concluidas).add(aulaAtual.id)
+        setConcluidas(novasConcluidas)
+
+        // Verifica se todas as aulas do módulo atual foram concluídas
+        const moduloAtual = modulos.find(m => m.aulas?.some(a => a.id === aulaAtual.id))
+        if (moduloAtual) {
+          const aulasMod = moduloAtual.aulas || []
+          const todasConcluidas = aulasMod.every(a => novasConcluidas.has(a.id))
+          const prova = provasMap[moduloAtual.id]
+          const jaAprovado = modulosAprovados.has(moduloAtual.id)
+
+          if (todasConcluidas && prova && !jaAprovado) {
+            // Carrega as questões da prova (pode não ter vindo no getProvasByModulos)
+            const provaCompleta = await provasService.getProvaByModulo(moduloAtual.id)
+            if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
+              setTimeout(() => setProvaAtiva({ prova: provaCompleta, moduloTitulo: moduloAtual.titulo }), 400)
+              return // não avança aula automaticamente
+            }
+          }
+        }
+
         // auto-advance to next lesson
         if (podeNext) setTimeout(() => irParaAula(todasAulas[idxAtual + 1]), 600)
       }
@@ -610,32 +667,44 @@ export function CursoPlayerPage() {
               const aulasMod = modulo.aulas || []
               const concluidasMod = aulasMod.filter(a => concluidas.has(a.id)).length
               const expandido = modulosExpandidos.has(modulo.id)
+              const bloqueado = isModuloBloqueado(mIdx)
 
               return (
                 <div key={modulo.id} className="border-b border-steel-100">
                   {/* Module header */}
                   <button
-                    onClick={() => toggleModulo(modulo.id)}
-                    className="w-full flex items-start gap-2 px-4 py-3 text-left bg-steel-50 hover:bg-steel-100 transition-colors"
+                    onClick={() => !bloqueado && toggleModulo(modulo.id)}
+                    className={[
+                      'w-full flex items-start gap-2 px-4 py-3 text-left transition-colors',
+                      bloqueado ? 'bg-steel-100 cursor-not-allowed opacity-60' : 'bg-steel-50 hover:bg-steel-100',
+                    ].join(' ')}
                   >
-                    <svg
-                      className={`w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5 transition-transform duration-150 ${expandido ? 'rotate-90' : ''}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    {bloqueado ? (
+                      <Lock className="w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <svg
+                        className={`w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5 transition-transform duration-150 ${expandido ? 'rotate-90' : ''}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-steel-700 leading-snug">
                         Seção {mIdx + 1}: {modulo.titulo}
                       </p>
-                      <p className="text-xs text-steel-400 mt-0.5">
-                        {concluidasMod}/{aulasMod.length} | {aulasMod.reduce((s, a) => s + (a.duracao_min || 0), 0)}min
-                      </p>
+                      {bloqueado ? (
+                        <p className="text-xs text-steel-400 mt-0.5">Conclua a avaliação anterior</p>
+                      ) : (
+                        <p className="text-xs text-steel-400 mt-0.5">
+                          {concluidasMod}/{aulasMod.length} | {aulasMod.reduce((s, a) => s + (a.duracao_min || 0), 0)}min
+                        </p>
+                      )}
                     </div>
                   </button>
 
                   {/* Aulas list */}
-                  {expandido && aulasMod.map((aula) => {
+                  {!bloqueado && expandido && aulasMod.map((aula) => {
                     const isAtual = aulaAtual?.id === aula.id
                     const isDone = concluidas.has(aula.id)
 
@@ -689,6 +758,25 @@ export function CursoPlayerPage() {
           )}
         </aside>
       </div>
+
+      {/* ── Prova Modal ──────────────────────────────────────────────────── */}
+      {provaAtiva && user && (
+        <ProvaModal
+          prova={provaAtiva.prova}
+          alunoId={user.id}
+          moduloTitulo={provaAtiva.moduloTitulo}
+          onAprovado={() => {
+            setModulosAprovados(prev => new Set(prev).add(
+              provaAtiva.prova.modulo_id
+            ))
+          }}
+          onFechar={() => {
+            setProvaAtiva(null)
+            // avança para a próxima aula disponível após fechar
+            if (podeNext) setTimeout(() => irParaAula(todasAulas[idxAtual + 1]), 200)
+          }}
+        />
+      )}
     </div>
   )
 }

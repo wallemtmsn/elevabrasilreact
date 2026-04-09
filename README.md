@@ -15,6 +15,7 @@ Desenvolvido por **NEXFORM - Transformação Digital**.
 | Estilização | Tailwind CSS 3 |
 | Roteamento | React Router DOM 6 |
 | Backend / Auth / DB | Supabase |
+| Ícones | lucide-react |
 
 ---
 
@@ -35,18 +36,20 @@ src/
 │   └── ui/
 │       ├── Avatar.tsx
 │       ├── Button.tsx
-│       ├── Input.tsx
+│       ├── Input.tsx        # Suporta suffix (ícone) para toggle de senha
 │       └── Modal.tsx
 ├── contexts/
-│   ├── AuthContext.tsx       # Sessão do usuário — getSession + onAuthStateChange sem double fetch
+│   ├── AuthContext.tsx       # Sessão do usuário — getSession + onAuthStateChange + toast expiração
 │   └── ToastContext.tsx      # Notificações globais
 ├── lib/
 │   └── supabase.ts          # Cliente Supabase (localStorage para sessão)
 ├── pages/
 │   ├── Home/
 │   │   ├── index.tsx        # Landing page completa + CourseModal com info dos cursos
-│   │   ├── LoginModal.tsx   # Modal de login
+│   │   ├── LoginModal.tsx   # Modal de login com toggle de senha e fluxo "esqueci a senha"
 │   │   └── RegisterModal.tsx# Modal de cadastro (CPF, telefone, senha)
+│   ├── ResetPassword/       # Redefinição de senha (rota pública /reset-password)
+│   │   └── index.tsx        # Aguarda evento PASSWORD_RECOVERY → formulário → confirmação
 │   ├── CursoLanding/        # Página de detalhes do curso (pública)
 │   │   ├── index.tsx        # Layout estilo Udemy: hero, sidebar, currículo, instrutor
 │   │   └── ModuloAccordion.tsx # Accordion de módulos e aulas
@@ -59,7 +62,8 @@ src/
 │   │       ├── Perfil.tsx
 │   │       └── Seguranca.tsx
 │   ├── CursoPlayer/         # Player de aulas (rota protegida)
-│   │   └── index.tsx        # Vídeo + sidebar de currículo + abas Visão Geral e Q&A
+│   │   ├── index.tsx        # Vídeo + sidebar + Q&A + bloqueio de módulo por avaliação
+│   │   └── ProvaModal.tsx   # Modal de avaliação: intro → questões → resultado/gabarito
 │   ├── Admin/               # Área administrativa (rota admin)
 │   │   ├── index.tsx
 │   │   └── sections/
@@ -68,25 +72,33 @@ src/
 │   │       ├── Alunos.tsx
 │   │       ├── MatriculasAdmin.tsx
 │   │       ├── ConteudoAdmin.tsx
-│   │       └── PerguntasAdmin.tsx  # Q&A agrupado por curso com resposta inline
+│   │       ├── PerguntasAdmin.tsx  # Q&A agrupado por curso com resposta inline
+│   │       └── ProvasAdmin.tsx     # CRUD de avaliações: criar prova, adicionar/editar/excluir questões
 │   └── Privacidade/         # Política de privacidade
 ├── routes/
-│   ├── AppRoutes.tsx        # Definição de rotas
+│   ├── AppRoutes.tsx        # Definição de rotas (inclui /reset-password)
 │   ├── ProtectedRoute.tsx   # Redireciona não autenticados; admin → /admin
 │   └── AdminRoute.tsx       # Redireciona não admins
 ├── services/
-│   ├── authService.ts       # Login, cadastro, logout, troca de senha
-│   ├── cursosService.ts     # CRUD de cursos (getAll, getAtivos, getById, create, update, delete)
-│   ├── matriculasService.ts # Matrículas: liberar, revogar, listar por aluno/curso
+│   ├── authService.ts       # Login, cadastro, logout, resetPassword
+│   ├── cursosService.ts     # CRUD de cursos
+│   ├── matriculasService.ts # Matrículas: liberar, revogar, listar
 │   ├── modulosService.ts    # Módulos e aulas: CRUD, progresso, reordenação
 │   ├── perguntasService.ts  # Q&A: getByAula, getAll (admin), fazer, responder, deletar
-│   └── profileService.ts    # Atualização de perfil
+│   ├── profileService.ts    # Atualização de perfil
+│   └── provasService.ts     # Avaliações: CRUD de provas/questões, submeter tentativa, histórico
 ├── types/
-│   └── index.ts             # Interfaces: Profile, Curso, Modulo, Aula, ProgressoAula, Pergunta, Toast
+│   └── index.ts             # Interfaces: Profile, Curso, Modulo, Aula, Prova, Questao, TentativaProva…
 └── utils/
     ├── courseDataMap.ts     # Mapa estático dos 24 cursos (imagem, normas, objetivos por slug)
     ├── formatters.ts        # formatCurrency, buildWhatsAppUrl, formatCPF, formatPhone
     └── validators.ts        # isValidEmail, isValidCPF, isValidPhone, isStrongPassword
+
+avaliações/                  # Documentação e scripts de automação (ver guia dentro)
+├── guia-cadastro-questoes.md
+├── test_add_questao.mjs     # (gitignored — contém credenciais)
+├── test_bulk_questoes.mjs   # (gitignored — contém credenciais)
+└── screenshots/             # (gitignored)
 ```
 
 ---
@@ -98,6 +110,7 @@ src/
 | `/` | Público | Landing page completa |
 | `/cursos/:id` | Público | Página de detalhes do curso (estilo Udemy) |
 | `/politica-de-privacidade` | Público | Política de privacidade |
+| `/reset-password` | Público | Redefinição de senha via link de e-mail |
 | `/painel` | Aluno autenticado | Dashboard do aluno (admin é redirecionado para `/admin`) |
 | `/curso/:id` | Aluno autenticado | Player de aulas do curso |
 | `/admin` | Admin autenticado | Painel administrativo |
@@ -112,6 +125,7 @@ src/
 - Barra de progresso geral em porcentagem
 - **Aba Visão Geral** — descrição do curso, carga horária, nº de módulos e aulas
 - **Aba Perguntas e Respostas** — aluno faz perguntas por aula; admin responde pelo painel
+- **Avaliações por módulo** — ao concluir todas as aulas de um módulo, a prova é acionada automaticamente. Nota mínima 80% para aprovação. Módulos seguintes ficam bloqueados até aprovação
 
 ---
 
@@ -125,6 +139,7 @@ src/
 | **Conteúdo** | Gerenciamento de módulos e aulas por curso |
 | **Matrículas** | Liberar e revogar acesso de alunos aos cursos |
 | **Perguntas e Respostas** | Q&A agrupado por curso — responder e excluir perguntas com badge de pendências |
+| **Avaliações** | CRUD de provas por módulo: criar prova, adicionar/editar/excluir questões de múltipla escolha |
 
 ---
 
@@ -247,11 +262,41 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 
 **RLS aplicado:** alunos inserem apenas as próprias perguntas; admins podem responder e deletar qualquer pergunta; todos podem visualizar.
 
+### `provas`
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | uuid | Identificador |
+| `modulo_id` | uuid | FK para `modulos` (1 prova por módulo) |
+| `titulo` | string | Título da prova |
+| `criado_em` | timestamp | Data de criação |
+
+### `questoes`
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | uuid | Identificador |
+| `prova_id` | uuid | FK para `provas` |
+| `enunciado` | string | Texto da pergunta |
+| `alternativas` | jsonb | `{ A, B, C, D }` — textos das alternativas |
+| `resposta_certa` | `'A'\|'B'\|'C'\|'D'` | Gabarito |
+| `ordem` | number | Posição na prova |
+
+### `tentativas_provas`
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | uuid | Identificador |
+| `aluno_id` | uuid | FK para `profiles` |
+| `prova_id` | uuid | FK para `provas` |
+| `respostas` | jsonb | `{ questao_id: letra }` — respostas do aluno |
+| `acertos` | number | Quantidade de acertos |
+| `total` | number | Total de questões |
+| `aprovado` | boolean | `acertos / total >= 0.8` |
+| `feita_em` | timestamp | Data da tentativa |
+
 ---
 
 ## Configuração do Ambiente
 
-O projeto inclui `.gitignore` na raiz protegendo `.env`, `node_modules/`, `dist/` e pastas externas como `playwright-mcp-main/`.
+O projeto inclui `.gitignore` na raiz protegendo `.env`, `node_modules/`, `dist/`, pastas externas como `playwright-mcp-main/` e os scripts/screenshots da pasta `avaliações/` (que contêm credenciais hardcoded).
 
 Crie um arquivo `.env` na raiz do projeto:
 
@@ -285,12 +330,17 @@ npm run preview
 
 ### Autenticação
 - **Login sem travamento** — `LoginModal` aguarda o `user` ser confirmado pelo `AuthContext` via `useEffect` antes de fechar e navegar. Elimina o race condition onde `ProtectedRoute` via `user=null` e redirecionava de volta para `/`
-- **Sem loop ao trocar de aba** — `AuthContext.onAuthStateChange` não seta `loading=true` após a carga inicial. Eventos `TOKEN_REFRESHED` (disparados pelo Supabase ao voltar de outra aba do navegador) são tratados silenciosamente sem travar a tela
-- **Admin redirecionado corretamente** — `ProtectedRoute` detecta `isAdmin` e redireciona para `/admin`; `LoginModal` também navega direto para `/admin` ao logar como admin, sem passar pelo `/painel`
+- **Sem loop ao trocar de aba** — `AuthContext.onAuthStateChange` não seta `loading=true` após a carga inicial. Eventos `TOKEN_REFRESHED` (disparados pelo Supabase ao voltar de outra aba) são tratados silenciosamente
+- **Token corrompido no localStorage** — `getSession()` tem `.catch()` que chama `signOut()` e desbloqueia o `loading`, evitando que a página trave no spinner caso o refresh token seja inválido
+- **Sessão expirada notifica o usuário** — `onAuthStateChange` detecta `SIGNED_OUT` inesperado e exibe um toast informando que a sessão expirou
+- **Nunca chamar `signOut()` dentro de `onAuthStateChange`** — corromperia o estado interno do cliente Supabase, travando todas as requisições subsequentes
+- **Admin redirecionado corretamente** — `ProtectedRoute` detecta `isAdmin` e redireciona para `/admin`; `LoginModal` também navega direto para `/admin` ao logar como admin
 - **Sessão armazenada em localStorage** — sem uso de cookies; padrão do Supabase client para SPAs
+- **Recuperação de senha** — `authService.resetPassword()` envia link via Supabase; `/reset-password` aguarda evento `PASSWORD_RECOVERY` para exibir o formulário de nova senha
 
 ### Painel Admin
-- **Criação de aulas sem travamento** — `reloadModulos()` no `ConteudoAdmin` foi desacoplado do bloco `try/finally`, garantindo que `setSaving(false)` sempre execute independente do resultado do reload
+- **Criação de aulas sem travamento** — `reloadModulos()` no `ConteudoAdmin` foi desacoplado do bloco `try/finally`, garantindo que `setSaving(false)` sempre execute
+- **Avaliações** — `ProvasAdmin` faz uma única query para buscar todas as provas dos módulos do curso (evita N+1). A aprovação do aluno é calculada no cliente: `acertos / total >= 0.8`
 
 ---
 

@@ -41,3 +41,10 @@ Thumbs.db
 
 # Playwright (pasta de testes externos, não é do projeto)
 playwright-mcp-main/
+works.md
+
+# Automação / scripts de teste (contêm credenciais hardcoded)
+avaliações/*.mjs
+
+# Screenshots gerados por scripts de automação
+avaliações/screenshots/

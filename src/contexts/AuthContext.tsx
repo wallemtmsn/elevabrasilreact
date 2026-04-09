@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/contexts/ToastContext'
 import type { Profile } from '@/types'
 
 interface AuthContextValue {
@@ -16,11 +17,13 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast()
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const initialLoaded = useRef(false)
+  const hadUser = useRef(false) // rastreia se havia usuário logado (para distinguir logout manual de expiração)
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data } = await supabase
@@ -38,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   const logout = useCallback(async () => {
+    hadUser.current = false // logout manual — não mostra aviso de sessão expirada
     setUser(null)
     setProfile(null)
     setSession(null)
@@ -73,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s)
       setUser(s?.user ?? null)
       if (s?.user) {
+        hadUser.current = true
         // Só rebusca o profile em login real, não em refresh de token
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           const p = await fetchProfile(s.user.id)
@@ -80,6 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setProfile(null)
+        // SIGNED_OUT inesperado (token expirado/inválido) — avisa o usuário
+        // Não chamar signOut() aqui: já foi disparado pelo próprio Supabase,
+        // chamá-lo novamente dentro do onAuthStateChange trava o cliente.
+        if (hadUser.current && event === 'SIGNED_OUT') {
+          hadUser.current = false
+          showToast('Sua sessão expirou. Por favor, faça login novamente.', 'info')
+        }
       }
     })
 
