@@ -46,17 +46,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Carga inicial: busca sessão uma única vez
-    supabase.auth.getSession().then(async ({ data }) => {
-      const s = data.session
-      setSession(s)
-      setUser(s?.user ?? null)
-      if (s?.user) {
-        const p = await fetchProfile(s.user.id)
-        setProfile(p)
-      }
-      setLoading(false)
-      initialLoaded.current = true
-    })
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        const s = data.session
+        setSession(s)
+        setUser(s?.user ?? null)
+        if (s?.user) {
+          const p = await fetchProfile(s.user.id)
+          setProfile(p)
+        }
+        setLoading(false)
+        initialLoaded.current = true
+      })
+      .catch(async () => {
+        // Token inválido ou expirado no localStorage — limpa sessão corrompida
+        // e continua como não autenticado para não travar a página
+        await supabase.auth.signOut()
+        setLoading(false)
+        initialLoaded.current = true
+      })
 
     // Mudanças de estado (login, logout, token refresh) — ignora o evento inicial
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, Button, Input } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,17 +13,28 @@ interface LoginModalProps {
   onSwitchToRegister: () => void
 }
 
+type View = 'login' | 'forgot'
+
 export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProps) {
   const { user, isAdmin } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
 
+  const [view, setView] = useState<View>('login')
+
+  // Login state
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
-  // Quando o AuthContext confirmar o login (user setado), fecha o modal e redireciona
+  // Forgot password state
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
+
   useEffect(() => {
     if (user && loading) {
       setLoading(false)
@@ -46,11 +58,29 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
     setLoading(true)
     try {
       await authService.login(email, password)
-      // Redirecionamento feito pelo useEffect acima quando user for setado
     } catch (err: unknown) {
       setLoading(false)
       const msg = err instanceof Error ? err.message : 'Erro ao entrar.'
       showToast(msg.includes('Invalid') ? 'E-mail ou senha incorretos.' : msg, 'error')
+    }
+  }
+
+  const handleForgot = async (evt: FormEvent) => {
+    evt.preventDefault()
+    if (!isValidEmail(forgotEmail)) {
+      setForgotError('E-mail inválido.')
+      return
+    }
+    setForgotError('')
+    setForgotLoading(true)
+    try {
+      await authService.resetPassword(forgotEmail)
+      setForgotSent(true)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar.'
+      setForgotError(msg)
+    } finally {
+      setForgotLoading(false)
     }
   }
 
@@ -59,7 +89,64 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
     setPassword('')
     setErrors({})
     setLoading(false)
+    setView('login')
+    setForgotEmail('')
+    setForgotError('')
+    setForgotSent(false)
     onClose()
+  }
+
+  const goToForgot = () => {
+    setForgotEmail(email) // pré-preenche com o email já digitado, se houver
+    setForgotError('')
+    setForgotSent(false)
+    setView('forgot')
+  }
+
+  if (view === 'forgot') {
+    return (
+      <Modal open={open} onClose={handleClose} title="Recuperar senha">
+        {forgotSent ? (
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-steel-600 text-sm">
+              Enviamos um link de recuperação para <strong>{forgotEmail}</strong>.
+              <br />
+              Verifique sua caixa de entrada (e o spam).
+            </p>
+            <Button type="button" fullWidth onClick={handleClose}>
+              Fechar
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleForgot} className="flex flex-col gap-4" noValidate>
+            <p className="text-sm text-steel-500">
+              Digite seu e-mail e enviaremos um link para você criar uma nova senha.
+            </p>
+            <Input
+              label="E-mail"
+              type="email"
+              placeholder="seu@email.com"
+              value={forgotEmail}
+              onChange={e => { setForgotEmail(e.target.value); setForgotError('') }}
+              error={forgotError}
+              autoComplete="email"
+            />
+            <Button type="submit" loading={forgotLoading} fullWidth>
+              Enviar link de recuperação
+            </Button>
+            <p className="text-center text-sm text-steel-500">
+              <button
+                type="button"
+                onClick={() => setView('login')}
+                className="text-navy-500 font-medium hover:underline"
+              >
+                Voltar ao login
+              </button>
+            </p>
+          </form>
+        )}
+      </Modal>
+    )
   }
 
   return (
@@ -74,15 +161,37 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
           error={errors.email}
           autoComplete="email"
         />
-        <Input
-          label="Senha"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          error={errors.password}
-          autoComplete="current-password"
-        />
+        <div className="flex flex-col gap-1">
+          <Input
+            label="Senha"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            error={errors.password}
+            autoComplete="current-password"
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="text-steel-400 hover:text-steel-600 focus:outline-none"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            }
+          />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={goToForgot}
+              className="text-xs text-navy-500 hover:underline"
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+        </div>
 
         <Button type="submit" loading={loading} fullWidth className="mt-2">
           Entrar

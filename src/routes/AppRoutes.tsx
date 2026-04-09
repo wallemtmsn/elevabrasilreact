@@ -7,11 +7,13 @@ import { AdminPage } from '@/pages/Admin'
 import { PrivacidadePage } from '@/pages/Privacidade'
 import { CursoPlayerPage } from '@/pages/CursoPlayer'
 import { CursoLandingPage } from '@/pages/CursoLanding'
+import { ResetPasswordPage } from '@/pages/ResetPassword'
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/politica-de-privacidade" element={<PrivacidadePage />} />
       <Route path="/cursos/:id" element={<CursoLandingPage />} />
 
