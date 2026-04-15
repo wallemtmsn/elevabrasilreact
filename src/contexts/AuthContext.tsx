@@ -3,7 +3,7 @@ import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/contexts/ToastContext'
 import type { Profile } from '@/types'
-
+// atualizado para lidar melhor com expiração de sessão, reautenticação e evitar refetch desnecessário do profile
 interface AuthContextValue {
   user: User | null
   profile: Profile | null
@@ -11,6 +11,7 @@ interface AuthContextValue {
   loading: boolean
   isAdmin: boolean
   refreshProfile: () => Promise<void>
+  refreshSession: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -40,6 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = await fetchProfile(user.id)
     setProfile(p)
   }, [user, fetchProfile])
+
+  const refreshSession = useCallback(async () => {
+    await supabase.auth.refreshSession()
+  }, [])
 
   const logout = useCallback(async () => {
     hadUser.current = false // logout manual — não mostra aviso de sessão expirada
@@ -109,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = profile?.role === 'admin'
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, refreshProfile, logout }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, refreshProfile, refreshSession, logout }}>
       {children}
     </AuthContext.Provider>
   )
