@@ -6,7 +6,7 @@ import { Button, Input } from '@/components/ui'
 import { isStrongPassword } from '@/utils/validators'
 
 export function Seguranca() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const { showToast } = useToast()
 
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' })
@@ -33,7 +33,7 @@ export function Seguranca() {
     setLoading(true)
     try {
       // Re-authenticate with current password before changing
-      await authService.reauthenticate(profile.nome, form.current)
+      await authService.reauthenticate(user!.email!, form.current)
       await authService.updatePassword(form.newPass)
       setForm({ current: '', newPass: '', confirm: '' })
       showToast('Senha alterada com sucesso!', 'success')
