@@ -8,11 +8,27 @@ export const provasService = {
   async getProvaByModulo(moduloId: string): Promise<Prova | null> {
     const { data, error } = await supabase
       .from('provas_modulos')
-      .select('*, questoes(*)')
+      .select('*, questoes(id, prova_id, enunciado, alternativas, ordem)')
       .eq('modulo_id', moduloId)
       .single()
 
     if (error?.code === 'PGRST116') return null // not found
+    if (error) throw new Error(error.message)
+    return {
+      ...data,
+      questoes: ((data.questoes || []) as Questao[]).sort((a, b) => a.ordem - b.ordem),
+    }
+  },
+
+  // Versão admin: inclui resposta_certa para edição no painel administrativo
+  async getProvaByModuloAdmin(moduloId: string): Promise<Prova | null> {
+    const { data, error } = await supabase
+      .from('provas_modulos')
+      .select('*, questoes(*)')
+      .eq('modulo_id', moduloId)
+      .single()
+
+    if (error?.code === 'PGRST116') return null
     if (error) throw new Error(error.message)
     return {
       ...data,
@@ -49,22 +65,18 @@ export const provasService = {
 
   async submeterTentativa(
     alunoId: string,
-    prova: Prova,
+    provaId: string,
     respostas: Record<string, string>
   ): Promise<TentativaProva> {
-    const questoes = prova.questoes || []
-    const acertos = questoes.filter(q => respostas[q.id] === q.resposta_certa).length
-    const total = questoes.length
-    const aprovado = total > 0 && acertos / total >= 0.8
-
-    const { data, error } = await supabase
-      .from('tentativas_prova')
-      .insert({ aluno_id: alunoId, prova_id: prova.id, respostas, acertos, total, aprovado })
-      .select()
-      .single()
+    // Cálculo de acertos feito server-side via RPC — gabarito nunca sai do banco
+    const { data, error } = await supabase.rpc('submeter_tentativa_prova', {
+      p_aluno_id: alunoId,
+      p_prova_id: provaId,
+      p_respostas: respostas,
+    })
 
     if (error) throw new Error(error.message)
-    return data
+    return data as TentativaProva
   },
 
   // ── CRUD admin — Prova ──────────────────────────────────────────────────────
