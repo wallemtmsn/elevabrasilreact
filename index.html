@@ -9,6 +9,19 @@
     <meta property="og:description" content="Capacitando profissionais para um futuro melhor. Cursos operacionais, NRs e desenvolvimento profissional." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self';
+      style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: blob: https://*.supabase.co;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+      frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com;
+      media-src 'self' blob:;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+    " />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
