@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const initialLoaded = useRef(false)
   const hadUser = useRef(false) // rastreia se havia usuário logado (para distinguir logout manual de expiração)
+  const profileLoaded = useRef(false) // evita refetch desnecessário em SIGNED_IN de reautenticação
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data } = await supabase
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     hadUser.current = false // logout manual — não mostra aviso de sessão expirada
+    profileLoaded.current = false
     setUser(null)
     setProfile(null)
     setSession(null)
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s?.user) {
           const p = await fetchProfile(s.user.id)
           setProfile(p)
+          profileLoaded.current = true
         }
         setLoading(false)
         initialLoaded.current = true
@@ -78,13 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(s?.user ?? null)
       if (s?.user) {
         hadUser.current = true
-        // Só rebusca o profile em login real, não em refresh de token
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        // Só rebusca o profile em login real (não em reautenticação nem em troca de senha)
+        // USER_UPDATED (troca de senha) não altera dados do profile — skip evita re-renders
+        // que competem com o toast de sucesso
+        // SIGNED_IN só busca se ainda não há profile carregado (login novo, não reauth)
+        if (event === 'SIGNED_IN' && !profileLoaded.current) {
           const p = await fetchProfile(s.user.id)
           setProfile(p)
+          profileLoaded.current = true
         }
       } else {
         setProfile(null)
+        profileLoaded.current = false
         // SIGNED_OUT inesperado (token expirado/inválido) — avisa o usuário
         // Não chamar signOut() aqui: já foi disparado pelo próprio Supabase,
         // chamá-lo novamente dentro do onAuthStateChange trava o cliente.
