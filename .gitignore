@@ -43,14 +43,8 @@ Thumbs.db
 playwright-mcp-main/
 works.md
 
-# Scripts com credenciais — nunca versionar
-*.mjs
-**/*.mjs
-*credentials*
-*secrets*
-
-# Variáveis de ambiente dos scripts de automação
-avaliações/.env
+# Automação / scripts de teste (contêm credenciais hardcoded)
+avaliações/*.mjs
 
 # Screenshots gerados por scripts de automação
 avaliações/screenshots/
