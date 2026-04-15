@@ -31,7 +31,7 @@ export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar 
     if (!todasRespondidas || submetendo) return
     setSubmetendo(true)
     try {
-      const tent = await provasService.submeterTentativa(alunoId, prova, respostas)
+      const tent = await provasService.submeterTentativa(alunoId, prova.id, respostas)
       setResultado(tent)
       setFase('resultado')
       if (tent.aprovado) onAprovado()
@@ -218,8 +218,8 @@ export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar 
                 </div>
                 <div className="divide-y divide-steel-100">
                   {(prova.questoes || []).map((q, idx) => {
-                    const resposta = resultado.respostas[q.id]
-                    const correta = resposta === q.resposta_certa
+                    const correta = resultado.questoes_corretas?.includes(q.id) ?? false
+                    const respostaAluno = resultado.respostas[q.id] as 'A' | 'B' | 'C' | 'D' | undefined
                     return (
                       <div key={q.id} className="px-4 py-3 flex items-start gap-3">
                         <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${correta ? 'bg-green-100' : 'bg-red-100'}`}>
@@ -230,9 +230,9 @@ export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar 
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-steel-600 leading-snug">{idx + 1}. {q.enunciado}</p>
-                          {!correta && (
-                            <p className="text-xs text-green-600 mt-0.5 font-medium">
-                              Correta: {q.resposta_certa} — {q.alternativas[q.resposta_certa]}
+                          {respostaAluno && (
+                            <p className={`text-xs mt-0.5 font-medium ${correta ? 'text-green-600' : 'text-red-500'}`}>
+                              Sua resposta: {respostaAluno} — {q.alternativas[respostaAluno]}
                             </p>
                           )}
                         </div>

@@ -84,7 +84,7 @@ export interface Questao {
   prova_id: string
   enunciado: string
   alternativas: { A: string; B: string; C: string; D: string }
-  resposta_certa: 'A' | 'B' | 'C' | 'D'
+  resposta_certa?: 'A' | 'B' | 'C' | 'D' // só presente no contexto admin; nunca exposto ao aluno
   ordem: number
 }
 
@@ -97,6 +97,7 @@ export interface TentativaProva {
   total: number
   aprovado: boolean
   feita_em: string
+  questoes_corretas?: string[] // IDs das questões acertadas, retornados pela RPC server-side
 }
 
 export interface Pergunta {

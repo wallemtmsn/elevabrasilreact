@@ -89,7 +89,7 @@ export function ProvasAdmin() {
     setProva(null)
     setLoadingProva(true)
     try {
-      const p = await provasService.getProvaByModulo(modulo.id)
+      const p = await provasService.getProvaByModuloAdmin(modulo.id)
       setProva(p)
       setTituloProva(p?.titulo ?? `Avaliação — ${modulo.titulo}`)
     } catch {
@@ -162,7 +162,7 @@ export function ProvasAdmin() {
       B: q.alternativas.B,
       C: q.alternativas.C,
       D: q.alternativas.D,
-      resposta_certa: q.resposta_certa,
+      resposta_certa: q.resposta_certa ?? 'A',
     })
     setModalQuestao(true)
   }
