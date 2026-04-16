@@ -38,9 +38,8 @@ export function LoginModal({ open, onClose, onSwitchToRegister }: LoginModalProp
   useEffect(() => {
     if (user && loading) {
       setLoading(false)
-      showToast('Bem-vindo(a) de volta!', 'success')
       onClose()
-      navigate(isAdmin ? '/admin' : '/painel')
+      navigate(isAdmin ? '/admin' : '/painel', { state: { bemVindoDeVolta: true } })
     }
   }, [user])
 
