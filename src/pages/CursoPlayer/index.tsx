@@ -54,6 +54,7 @@ function VideoPlayer({ url }: { url: string }) {
       key={url}
       src={getEmbedUrl(url)}
       className="w-full h-full"
+      sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-forms"
       allow="autoplay; fullscreen; picture-in-picture"
       allowFullScreen
       title="Aula"
