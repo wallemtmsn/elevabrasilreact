@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/contexts/ToastContext'
-import { Avatar } from '@/components/ui'
+import { Avatar, Modal } from '@/components/ui'
 import { VisaoGeral } from './sections/VisaoGeral'
 import { Perfil } from './sections/Perfil'
 import { Cursos } from './sections/Cursos'
@@ -40,11 +40,21 @@ const navItems: { id: Section; label: string; icon: React.ReactNode }[] = [
 ]
 
 export function PainelPage() {
-  const { profile, logout } = useAuth()
+  const { profile, logout, loading } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
   const [active, setActive] = useState<Section>('visao-geral')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(
+    !!(location.state as { novoAluno?: boolean } | null)?.novoAluno
+  )
+
+  useEffect(() => {
+    if (!showWelcome) return
+    const t = setTimeout(() => setShowWelcome(false), 2500)
+    return () => clearTimeout(t)
+  }, [showWelcome])
 
   const handleLogout = async () => {
     try {
@@ -56,7 +66,10 @@ export function PainelPage() {
     }
   }
 
-  if (!profile) return null
+  if (loading || !profile) {
+    if (!loading && !profile) { navigate('/'); return null }
+    return <div className="min-h-screen bg-steel-50" />
+  }
 
   const renderSection = () => {
     switch (active) {
@@ -69,6 +82,20 @@ export function PainelPage() {
   }
 
   return (
+    <>
+    <Modal open={showWelcome} onClose={() => setShowWelcome(false)} maxWidth="sm">
+      <div className="flex flex-col items-center gap-5 py-4 text-center">
+        <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-12 w-auto" />
+        <svg className="animate-spin h-9 w-9 text-navy-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <div>
+          <p className="text-lg font-semibold text-steel-800">Estamos criando seu painel de Aluno</p>
+          <p className="text-sm text-steel-400 mt-1">Isso levará apenas alguns instantes…</p>
+        </div>
+      </div>
+    </Modal>
     <div className="min-h-screen bg-steel-50 flex">
       {/* Sidebar overlay (mobile) */}
       {sidebarOpen && (
@@ -149,5 +176,6 @@ export function PainelPage() {
         </main>
       </div>
     </div>
+    </>
   )
 }

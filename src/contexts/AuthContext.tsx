@@ -37,8 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshProfile = useCallback(async () => {
-    if (!user) return
-    const p = await fetchProfile(user.id)
+    // user state pode não ter sido atualizado ainda logo após signUp (race condition)
+    // fallback: busca o userId direto da sessão ativa do Supabase
+    const userId = user?.id ?? (await supabase.auth.getSession()).data.session?.user.id
+    if (!userId) return
+    const p = await fetchProfile(userId)
     setProfile(p)
   }, [user, fetchProfile])
 
