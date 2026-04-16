@@ -46,15 +46,21 @@ export function PainelPage() {
   const location = useLocation()
   const [active, setActive] = useState<Section>('visao-geral')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showWelcome, setShowWelcome] = useState(
-    !!(location.state as { novoAluno?: boolean } | null)?.novoAluno
-  )
+  const locationState = location.state as { novoAluno?: boolean; bemVindoDeVolta?: boolean } | null
+  const [showWelcome, setShowWelcome] = useState(!!locationState?.novoAluno)
+  const [showBemVindo, setShowBemVindo] = useState(!!locationState?.bemVindoDeVolta)
 
   useEffect(() => {
     if (!showWelcome) return
     const t = setTimeout(() => setShowWelcome(false), 2500)
     return () => clearTimeout(t)
   }, [showWelcome])
+
+  useEffect(() => {
+    if (!showBemVindo) return
+    const t = setTimeout(() => setShowBemVindo(false), 3000)
+    return () => clearTimeout(t)
+  }, [showBemVindo])
 
   const handleLogout = async () => {
     try {
@@ -83,6 +89,7 @@ export function PainelPage() {
 
   return (
     <>
+    {/* Modal: novo cadastro */}
     <Modal open={showWelcome} onClose={() => setShowWelcome(false)} maxWidth="sm">
       <div className="flex flex-col items-center gap-5 py-4 text-center">
         <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-12 w-auto" />
@@ -94,6 +101,30 @@ export function PainelPage() {
           <p className="text-lg font-semibold text-steel-800">Estamos criando seu painel de Aluno</p>
           <p className="text-sm text-steel-400 mt-1">Isso levará apenas alguns instantes…</p>
         </div>
+      </div>
+    </Modal>
+
+    {/* Modal: boas-vindas de retorno */}
+    <Modal open={showBemVindo} onClose={() => setShowBemVindo(false)} maxWidth="sm">
+      <div className="flex flex-col items-center gap-4 py-2 text-center">
+        <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-10 w-auto" />
+        <div className="w-16 h-16 rounded-full bg-navy-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+          {profile.nome.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <p className="text-xl font-bold text-steel-800">
+            Bem-vindo(a) de volta, {profile.nome.split(' ')[0]}!
+          </p>
+          <p className="text-sm text-steel-400 mt-1">
+            Continue de onde parou — seu aprendizado te espera.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowBemVindo(false)}
+          className="mt-1 px-6 py-2 bg-navy-500 text-white text-sm font-medium rounded-lg hover:bg-navy-600 transition-colors"
+        >
+          Continuar
+        </button>
       </div>
     </Modal>
     <div className="min-h-screen bg-steel-50 flex">
