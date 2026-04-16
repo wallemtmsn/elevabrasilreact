@@ -99,7 +99,16 @@ Após cada correção, exiba **exatamente** neste formato:
 
 ---
 
-### CORREÇÃO 1 de 13 — 🔴 CRÍTICO
+### CORREÇÃO 1 de 13 — 🔴 CRÍTICO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `Seguranca.tsx`: substituído `profile.nome` por `user!.email!` na chamada de `reauthenticate`
+> - `AuthContext.tsx`: adicionado `profileLoaded` ref para evitar re-fetches desnecessários
+>   em eventos `SIGNED_IN` (reautenticação) e `USER_UPDATED` (troca de senha), corrigindo
+>   race condition que impedia o toast de sucesso de ser exibido
+>
+> **Arquivos alterados:** `src/pages/Painel/sections/Seguranca.tsx`, `src/contexts/AuthContext.tsx`
+
 **Bug: profile.nome usado como e-mail na reautenticação**
 
 **Problema:** Em `src/pages/Painel/sections/Seguranca.tsx`, a função de troca de senha
@@ -130,7 +139,24 @@ await authService.reauthenticate(user!.email!, form.current)
 
 ---
 
-### CORREÇÃO 2 de 13 — 🔴 CRÍTICO
+### CORREÇÃO 2 de 13 — 🔴 CRÍTICO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `provasService.ts`: `getProvaByModulo` agora usa `select` sem `resposta_certa`; criada
+>   `getProvaByModuloAdmin` (com `resposta_certa`) exclusiva para o painel admin
+> - `provasService.ts`: `submeterTentativa` agora chama `supabase.rpc('submeter_tentativa_prova')`
+>   — cálculo de acertos 100% server-side
+> - `ProvaModal.tsx`: gabarito usa `resultado.questoes_corretas` (retornado pela RPC) para ✓/✗
+> - `types/index.ts`: `Questao.resposta_certa` tornado opcional; `TentativaProva` recebe
+>   `questoes_corretas?: string[]`
+> - `ProvasAdmin.tsx`: trocado `getProvaByModulo` por `getProvaByModuloAdmin`
+>
+> **Ação manual pendente:** criar a RPC `submeter_tentativa_prova` no Supabase SQL Editor
+> (SQL completo abaixo, na seção original)
+>
+> **Arquivos alterados:** `src/services/provasService.ts`, `src/types/index.ts`,
+> `src/pages/CursoPlayer/ProvaModal.tsx`, `src/pages/Admin/sections/ProvasAdmin.tsx`
+
 **Validação e correção de provas movida para o servidor**
 
 **Problema:** Em `src/services/provasService.ts`, a query `getProvaByModulo` retorna
@@ -197,7 +223,14 @@ $$;
 
 ---
 
-### CORREÇÃO 3 de 13 — 🟠 ALTO
+### CORREÇÃO 3 de 13 — 🟠 ALTO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `.env.example`: URL real do Supabase e número de WhatsApp substituídos por placeholders;
+>   comentários explicativos adicionados em cada variável
+>
+> **Arquivo alterado:** `.env.example`
+
 **Proteção do arquivo .env.example**
 
 **Problema:** O `.env.example` contém a URL real do projeto Supabase
@@ -226,7 +259,18 @@ VITE_WHATSAPP_NUMBER=55DDDNUMERO
 
 ---
 
-### CORREÇÃO 4 de 13 — 🟠 ALTO
+### CORREÇÃO 4 de 13 — 🟠 ALTO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `index.html`: adicionada `<meta http-equiv="Content-Security-Policy">` com:
+>   `script-src 'self'`, `style-src 'self' fonts.googleapis.com 'unsafe-inline'`,
+>   `font-src 'self' fonts.gstatic.com`, `connect-src 'self' *.supabase.co wss://*.supabase.co`,
+>   `frame-src youtube.com youtube-nocookie.com player.vimeo.com`,
+>   `img-src 'self' data: blob: *.supabase.co`, `object-src 'none'`,
+>   `base-uri 'self'`, `form-action 'self'`
+>
+> **Arquivo alterado:** `index.html`
+
 **Content Security Policy (CSP) no index.html**
 
 **Problema:** A aplicação não define nenhuma Content Security Policy, permitindo que
@@ -245,7 +289,15 @@ sessão e faça requisições para qualquer domínio.
 
 ---
 
-### CORREÇÃO 5 de 13 — 🟠 ALTO
+### CORREÇÃO 5 de 13 — 🟠 ALTO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `CursoPlayer/index.tsx`: adicionado `sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-forms"` no `<iframe>` do `VideoPlayer`
+> - `allow-popups` e `allow-forms` foram necessários para o player do OneDrive funcionar (autenticação interna e envio de dados de reprodução)
+> - CSP `frame-src` em `index.html` também recebeu `https://1drv.ms https://onedrive.live.com` (vídeos hospedados no OneDrive, não no YouTube/Vimeo)
+>
+> **Arquivo alterado:** `src/pages/CursoPlayer/index.tsx`
+
 **Atributo sandbox no iframe de vídeo**
 
 **Problema:** O componente `VideoPlayer` em `src/pages/CursoPlayer/index.tsx` renderiza
@@ -359,7 +411,16 @@ criando risco de duplo-escaping (ex: `&amp;lt;` ao invés de `<`).
 
 ---
 
-### CORREÇÃO 11 de 13 — 🟡 MÉDIO
+### CORREÇÃO 11 de 13 — 🟡 MÉDIO — ✅ CONCLUÍDA
+
+> **O que foi feito:**
+> - `.gitignore`: regras `avaliações/*.mjs` substituídas por `*.mjs`, `**/*.mjs`,
+>   `*credentials*`, `*secrets*` e `avaliações/.env`
+> - `avaliações/.env.example`: criado com variáveis `BASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+>   sem valores reais
+>
+> **Arquivos alterados:** `.gitignore`, `avaliações/.env.example` (novo)
+
 **Prevenção de scripts de automação com credenciais**
 
 **Problema:** O `.gitignore` documenta que `avaliações/*.mjs` contém credenciais
