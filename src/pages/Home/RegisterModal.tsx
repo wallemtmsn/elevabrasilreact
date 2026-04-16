@@ -54,7 +54,7 @@ export function RegisterModal({ open, onClose, onSwitchToLogin }: RegisterModalP
       await refreshProfile()
       showToast('Cadastro realizado! Bem-vindo(a)!', 'success')
       onClose()
-      navigate('/painel')
+      navigate('/painel', { state: { novoAluno: true } })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao cadastrar.'
       showToast(msg, 'error')
