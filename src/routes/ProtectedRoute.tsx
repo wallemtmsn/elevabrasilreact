@@ -20,7 +20,5 @@ export function ProtectedRoute() {
 
   if (!user) return <Navigate to="/" replace />
 
-  if (isAdmin) return <Navigate to="/admin" replace />
-
   return <Outlet />
 }
