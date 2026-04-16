@@ -109,6 +109,7 @@ Após cada correção, exiba **exatamente** neste formato:
 >
 > **Arquivos alterados:** `src/pages/Painel/sections/Seguranca.tsx`, `src/contexts/AuthContext.tsx`
 
+### CORREÇÃO 1 de 13 — 🔴 CRÍTICO
 **Bug: profile.nome usado como e-mail na reautenticação**
 
 **Problema:** Em `src/pages/Painel/sections/Seguranca.tsx`, a função de troca de senha
@@ -157,6 +158,7 @@ await authService.reauthenticate(user!.email!, form.current)
 > **Arquivos alterados:** `src/services/provasService.ts`, `src/types/index.ts`,
 > `src/pages/CursoPlayer/ProvaModal.tsx`, `src/pages/Admin/sections/ProvasAdmin.tsx`
 
+### CORREÇÃO 2 de 13 — 🔴 CRÍTICO
 **Validação e correção de provas movida para o servidor**
 
 **Problema:** Em `src/services/provasService.ts`, a query `getProvaByModulo` retorna
@@ -231,6 +233,7 @@ $$;
 >
 > **Arquivo alterado:** `.env.example`
 
+### CORREÇÃO 3 de 13 — 🟠 ALTO
 **Proteção do arquivo .env.example**
 
 **Problema:** O `.env.example` contém a URL real do projeto Supabase
@@ -271,6 +274,7 @@ VITE_WHATSAPP_NUMBER=55DDDNUMERO
 >
 > **Arquivo alterado:** `index.html`
 
+### CORREÇÃO 4 de 13 — 🟠 ALTO
 **Content Security Policy (CSP) no index.html**
 
 **Problema:** A aplicação não define nenhuma Content Security Policy, permitindo que
@@ -298,6 +302,7 @@ sessão e faça requisições para qualquer domínio.
 >
 > **Arquivo alterado:** `src/pages/CursoPlayer/index.tsx`
 
+### CORREÇÃO 5 de 13 — 🟠 ALTO
 **Atributo sandbox no iframe de vídeo**
 
 **Problema:** O componente `VideoPlayer` em `src/pages/CursoPlayer/index.tsx` renderiza
@@ -421,6 +426,7 @@ criando risco de duplo-escaping (ex: `&amp;lt;` ao invés de `<`).
 >
 > **Arquivos alterados:** `.gitignore`, `avaliações/.env.example` (novo)
 
+### CORREÇÃO 11 de 13 — 🟡 MÉDIO
 **Prevenção de scripts de automação com credenciais**
 
 **Problema:** O `.gitignore` documenta que `avaliações/*.mjs` contém credenciais
