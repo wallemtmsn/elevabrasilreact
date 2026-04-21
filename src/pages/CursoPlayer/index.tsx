@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -13,14 +13,26 @@ import type { Curso, Modulo, Aula, Pergunta, Prova } from '@/types'
 
 function getEmbedUrl(url: string): string {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1`
+  if (yt) {
+    const origin = encodeURIComponent(window.location.origin)
+    return `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`
+  }
   const vimeo = url.match(/vimeo\.com\/(\d+)/)
-  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?api=1`
   return url
 }
 
 function isDirectVideo(url: string): boolean {
   return /\.(mp4|webm|ogg)(\?|$)/i.test(url)
+}
+
+type VideoKind = 'direct' | 'youtube' | 'vimeo' | 'unknown'
+
+function getVideoKind(url: string): VideoKind {
+  if (isDirectVideo(url)) return 'direct'
+  if (/youtube\.com|youtu\.be/.test(url)) return 'youtube'
+  if (/vimeo\.com/.test(url)) return 'vimeo'
+  return 'unknown'
 }
 
 function formatDuracao(min?: number | null): string {
@@ -37,7 +49,9 @@ function getTodasAulas(modulos: Modulo[]): Aula[] {
 
 // ─── VideoPlayer ─────────────────────────────────────────────────────────────
 
-function VideoPlayer({ url }: { url: string }) {
+interface VideoPlayerProps { url: string; onEnded: () => void }
+
+function VideoPlayer({ url, onEnded }: VideoPlayerProps) {
   if (isDirectVideo(url)) {
     return (
       <video
@@ -46,6 +60,7 @@ function VideoPlayer({ url }: { url: string }) {
         controls
         autoPlay
         src={url}
+        onEnded={onEnded}
       />
     )
   }
@@ -108,6 +123,8 @@ export function CursoPlayerPage() {
   const [enviando, setEnviando] = useState(false)
   const [respondendoId, setRespondendoId] = useState<string | null>(null)
   const [textoResposta, setTextoResposta] = useState('')
+  const [videoAssistido, setVideoAssistido] = useState(false)
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -170,6 +187,54 @@ export function CursoPlayerPage() {
       .finally(() => setLoadingQA(false))
   }, [aulaAtual?.id, abaAtual])
 
+  useEffect(() => {
+    if (fallbackTimerRef.current !== null) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
+    setVideoAssistido(false)
+
+    const url = aulaAtual?.video_url
+    if (!url) return
+
+    const kind = getVideoKind(url)
+
+    if (kind === 'unknown') {
+      const delaySec = (aulaAtual.duracao_min ?? 0) > 0
+        ? (aulaAtual.duracao_min as number) * 60
+        : 30
+      fallbackTimerRef.current = setTimeout(() => setVideoAssistido(true), delaySec * 1000)
+      return
+    }
+
+    if (kind !== 'youtube' && kind !== 'vimeo') return
+
+    function handleMessage(event: MessageEvent) {
+      if (kind === 'youtube') {
+        if (!event.origin.includes('youtube.com')) return
+        let data: { event?: string; info?: number } | null = null
+        try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data }
+        catch { return }
+        if (data?.event === 'onStateChange' && data?.info === 0) setVideoAssistido(true)
+      } else {
+        if (!event.origin.includes('vimeo.com')) return
+        let data: { event?: string } | null = null
+        try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data }
+        catch { return }
+        if (data?.event === 'finish') setVideoAssistido(true)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [aulaAtual?.id, aulaAtual?.video_url, aulaAtual?.duracao_min])
+
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current !== null) clearTimeout(fallbackTimerRef.current)
+    }
+  }, [])
+
   const handleFazerPergunta = async () => {
     if (!novaPergunta.trim() || !aulaAtual || !user) return
     setEnviando(true)
@@ -203,6 +268,13 @@ export function CursoPlayerPage() {
   const idxAtual = aulaAtual ? todasAulas.findIndex(a => a.id === aulaAtual.id) : -1
   const podePrev = idxAtual > 0
   const podeNext = idxAtual < todasAulas.length - 1
+
+  const deveBloquearBotao =
+    !!aulaAtual?.video_url &&
+    !concluidas.has(aulaAtual.id) &&
+    !videoAssistido
+
+  const handleVideoEnded = useCallback(() => setVideoAssistido(true), [])
 
   // Módulo N está bloqueado se o módulo N-1 tem prova e ainda não foi aprovado
   function isModuloBloqueado(moduloIdx: number): boolean {
@@ -359,9 +431,9 @@ export function CursoPlayerPage() {
           <div className="bg-black w-full">
             <div className="max-w-5xl mx-auto w-full aspect-video">
               {aulaAtual?.video_url ? (
-                <VideoPlayer url={aulaAtual.video_url} />
+                <VideoPlayer url={aulaAtual.video_url} onEnded={handleVideoEnded} />
               ) : curso.video_url ? (
-                <VideoPlayer url={curso.video_url} />
+                <VideoPlayer url={curso.video_url} onEnded={handleVideoEnded} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-white/40">
                   <div className="text-center">
@@ -407,12 +479,15 @@ export function CursoPlayerPage() {
                 {aulaAtual && (
                   <button
                     onClick={toggleConcluida}
-                    disabled={salvando}
+                    disabled={salvando || deveBloquearBotao}
+                    title={deveBloquearBotao ? 'Assista ao vídeo para liberar esta opção' : undefined}
                     className={[
                       'ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
                       concluidas.has(aulaAtual.id)
                         ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
-                        : 'bg-navy-500 text-white hover:bg-navy-600',
+                        : deveBloquearBotao
+                          ? 'bg-steel-100 text-steel-400 border border-steel-200 cursor-not-allowed'
+                          : 'bg-navy-500 text-white hover:bg-navy-600',
                     ].join(' ')}
                   >
                     {salvando ? (
