@@ -77,7 +77,7 @@ src/
 │   └── Privacidade/         # Política de privacidade
 ├── routes/
 │   ├── AppRoutes.tsx        # Definição de rotas (inclui /reset-password)
-│   ├── ProtectedRoute.tsx   # Redireciona não autenticados; admin → /admin
+│   ├── ProtectedRoute.tsx   # Redireciona não autenticados; admins acessam /painel normalmente
 │   └── AdminRoute.tsx       # Redireciona não admins
 ├── services/
 │   ├── authService.ts       # Login, cadastro, logout, resetPassword
@@ -111,9 +111,9 @@ avaliações/                  # Documentação e scripts de automação (ver gu
 | `/cursos/:id` | Público | Página de detalhes do curso (estilo Udemy) |
 | `/politica-de-privacidade` | Público | Política de privacidade |
 | `/reset-password` | Público | Redefinição de senha via link de e-mail |
-| `/painel` | Aluno autenticado | Dashboard do aluno (admin é redirecionado para `/admin`) |
-| `/curso/:id` | Aluno autenticado | Player de aulas do curso |
-| `/admin` | Admin autenticado | Painel administrativo |
+| `/painel` | Autenticado (aluno ou admin) | Dashboard do aluno — admin também acessa e vê botão "Painel Admin" na sidebar |
+| `/curso/:id` | Autenticado (aluno ou admin) | Player de aulas do curso |
+| `/admin` | Admin autenticado | Painel administrativo — possui link "Painel do aluno" na sidebar |
 
 ---
 
@@ -334,13 +334,24 @@ npm run preview
 - **Token corrompido no localStorage** — `getSession()` tem `.catch()` que chama `signOut()` e desbloqueia o `loading`, evitando que a página trave no spinner caso o refresh token seja inválido
 - **Sessão expirada notifica o usuário** — `onAuthStateChange` detecta `SIGNED_OUT` inesperado e exibe um toast informando que a sessão expirou
 - **Nunca chamar `signOut()` dentro de `onAuthStateChange`** — corromperia o estado interno do cliente Supabase, travando todas as requisições subsequentes
-- **Admin redirecionado corretamente** — `ProtectedRoute` detecta `isAdmin` e redireciona para `/admin`; `LoginModal` também navega direto para `/admin` ao logar como admin
+- **Admin acessa os dois painéis** — `ProtectedRoute` não redireciona mais admins; admins acessam `/painel` normalmente e veem um botão amarelo "Painel Admin" na sidebar. O `LoginModal` navega admins para `/admin` ao logar; o painel admin possui link "Painel do aluno" na sidebar footer
+- **Modal de boas-vindas — novo cadastro** — após o registro, `RegisterModal` navega para `/painel` com `state: { novoAluno: true }`; `PainelPage` detecta e exibe modal com spinner e mensagem "Estamos criando seu painel de Aluno" por 2,5 s
+- **Modal de boas-vindas — retorno** — no login bem-sucedido, `LoginModal` navega com `state: { bemVindoDeVolta: true }`; `PainelPage` exibe modal com avatar (inicial do nome), "Bem-vindo(a) de volta, [primeiro nome]!" e botão "Continuar" (auto-fecha em 3 s)
+- **Race condition no registro** — ao criar conta, `SIGNED_IN` dispara antes do INSERT em `profiles`, fazendo `refreshProfile` retornar cedo (`user` ainda null no estado React). Corrigido em `AuthContext.refreshProfile`: usa `user?.id ?? getSession().user.id` como fallback
 - **Sessão armazenada em localStorage** — sem uso de cookies; padrão do Supabase client para SPAs
 - **Recuperação de senha** — `authService.resetPassword()` envia link via Supabase; `/reset-password` aguarda evento `PASSWORD_RECOVERY` para exibir o formulário de nova senha
 
 ### Painel Admin
 - **Criação de aulas sem travamento** — `reloadModulos()` no `ConteudoAdmin` foi desacoplado do bloco `try/finally`, garantindo que `setSaving(false)` sempre execute
 - **Avaliações** — `ProvasAdmin` faz uma única query para buscar todas as provas dos módulos do curso (evita N+1). A aprovação do aluno é calculada no cliente: `acertos / total >= 0.8`
+
+### Segurança (auditoria aplicada)
+- **Gabarito nunca exposto** — `getProvaByModulo` exclui `resposta_certa` do SELECT público; cálculo de acertos feito server-side via RPC `submeter_tentativa_prova` (Supabase SQL)
+- **Reautenticação corrigida** — `Seguranca.tsx` usava `profile.nome` como e-mail; corrigido para `user.email`
+- **Content Security Policy** — `<meta http-equiv="Content-Security-Policy">` em `index.html` com `script-src 'self'`, `connect-src *.supabase.co`, `frame-src youtube/vimeo/onedrive`, `object-src 'none'`
+- **iframe sandbox** — `VideoPlayer` em `CursoPlayer` inclui `sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-forms"` para isolar o conteúdo embutido
+- **`.env.example` sem dados reais** — URL do Supabase e número WhatsApp substituídos por placeholders genéricos
+- **`.gitignore` ampliado** — `*.mjs`, `**/*.mjs`, `*credentials*`, `*secrets*` para prevenir scripts com credenciais hardcoded
 
 ---
 
