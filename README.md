@@ -1,21 +1,54 @@
-# Eleva Brasil — Plataforma de Treinamentos e Consultorias
+# Eleva Brasil — Plataforma de Treinamentos Online
 
-Aplicação web da **Eleva Brasil**, empresa especializada em treinamentos e consultorias localizada em São João da Barra – RJ. A plataforma oferece landing page com catálogo de 24 cursos, página de detalhes de curso estilo Udemy, área do aluno com player de aulas e painel administrativo completo.
+Plataforma web completa da **Eleva Brasil Treinamentos e Consultorias**, empresa especializada em capacitação profissional e normas regulamentadoras, localizada em São João da Barra – RJ.
 
-Desenvolvido por **NEXFORM - Transformação Digital**.
+A aplicação oferece landing page institucional com catálogo de 24 cursos, página de detalhes estilo Udemy, área do aluno com player de aulas e avaliações, e painel administrativo completo.
+
+Desenvolvido por **[NEXFORM - Transformação Digital](https://www.linkedin.com/company/nexformsolu%C3%A7%C3%B5estecnologicas/)**.
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Framework | React 18 + TypeScript |
-| Bundler | Vite 6 |
-| Estilização | Tailwind CSS 3 |
-| Roteamento | React Router DOM 6 |
-| Backend / Auth / DB | Supabase |
-| Ícones | lucide-react |
+| Camada | Tecnologia | Versão |
+|---|---|---|
+| Framework | React + TypeScript | 18.3.1 / 5.6.3 |
+| Bundler | Vite | 6.0.1 |
+| Estilização | Tailwind CSS | 3.4.15 |
+| Roteamento | React Router DOM | 6.28.0 |
+| Backend / Auth / DB / Storage | Supabase | 2.47.0 |
+| Ícones | lucide-react | 1.7.0 |
+
+---
+
+## Configuração do Ambiente
+
+### 1. Pré-requisitos
+
+- Node.js 18+
+- npm 9+
+- Projeto configurado no [Supabase](https://supabase.com)
+
+### 2. Variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto baseado no `.env.example`:
+
+```env
+VITE_SUPABASE_URL=https://<seu-projeto>.supabase.co
+VITE_SUPABASE_ANON_KEY=<sua-anon-key>
+VITE_WHATSAPP_NUMBER=55DDDNUMERO
+```
+
+As variáveis `VITE_*` ficam expostas no bundle de produção — isso é esperado e seguro **desde que as RLS policies do Supabase estejam configuradas corretamente**.
+
+### 3. Scripts disponíveis
+
+```bash
+npm install        # Instalar dependências
+npm run dev        # Servidor de desenvolvimento (http://localhost:5173)
+npm run build      # Build para produção (saída em dist/)
+npm run preview    # Pré-visualizar o build de produção
+```
 
 ---
 
@@ -23,82 +56,96 @@ Desenvolvido por **NEXFORM - Transformação Digital**.
 
 ```
 public/
-└── assets/img/              # Imagens dos cursos, logo e NEXFORM
+└── assets/img/              # Imagens dos 24 cursos, logo e marca NEXFORM
 
 src/
-├── App.tsx                  # Raiz da aplicação (BrowserRouter + Providers)
-├── main.tsx                 # Entry point
+├── App.tsx                  # Raiz: BrowserRouter + ToastProvider + AuthProvider + AppRoutes
+├── main.tsx                 # Entry point React
+│
 ├── styles/
-│   └── globals.css          # Tailwind + classes utilitárias (course-card, course-tab, etc.)
+│   └── globals.css          # Tailwind base + classes utilitárias (course-card, etc.)
+│
 ├── components/
 │   ├── layout/
-│   │   └── Navbar.tsx       # Header fixo: logo, nav, WhatsApp, botão Apoio, auth
+│   │   └── Navbar.tsx       # Header fixo: logo, links de nav, ícone WhatsApp, auth
 │   └── ui/
-│       ├── Avatar.tsx
-│       ├── Button.tsx
-│       ├── Input.tsx        # Suporta suffix (ícone) para toggle de senha
-│       └── Modal.tsx
+│       ├── Avatar.tsx       # Avatar com fallback de iniciais
+│       ├── Button.tsx       # Variantes: primary, secondary, ghost, danger
+│       ├── Input.tsx        # Input com suporte a suffix (toggle de senha)
+│       ├── Modal.tsx        # Modal com backdrop, fecha com Esc
+│       └── index.ts         # Barrel export
+│
 ├── contexts/
-│   ├── AuthContext.tsx       # Sessão do usuário — getSession + onAuthStateChange + toast expiração
-│   └── ToastContext.tsx      # Notificações globais
+│   ├── AuthContext.tsx      # Sessão, perfil, role, refresh, detecção de expiração
+│   └── ToastContext.tsx     # Notificações globais (auto-dismiss 3,5s)
+│
 ├── lib/
-│   └── supabase.ts          # Cliente Supabase (localStorage para sessão)
+│   └── supabase.ts          # Cliente Supabase (sessão em localStorage)
+│
+├── hooks/
+│   ├── useRefetchOnFocus.ts # Refetch ao voltar para a aba
+│   └── useLoadingTimeout.ts # Loading com timeout máximo
+│
 ├── pages/
-│   ├── Home/
-│   │   ├── index.tsx        # Landing page completa + CourseModal com info dos cursos
-│   │   ├── LoginModal.tsx   # Modal de login com toggle de senha e fluxo "esqueci a senha"
-│   │   └── RegisterModal.tsx# Modal de cadastro (CPF, telefone, senha)
-│   ├── ResetPassword/       # Redefinição de senha (rota pública /reset-password)
-│   │   └── index.tsx        # Aguarda evento PASSWORD_RECOVERY → formulário → confirmação
+│   ├── Home/                # Landing page (pública)
+│   │   ├── index.tsx        # Hero, Sobre, Serviços, Cursos, Equipe, Contato, Footer
+│   │   ├── LoginModal.tsx   # Modal de login com "esqueci a senha"
+│   │   └── RegisterModal.tsx# Cadastro: nome, CPF, telefone, e-mail, senha
+│   │
 │   ├── CursoLanding/        # Página de detalhes do curso (pública)
-│   │   ├── index.tsx        # Layout estilo Udemy: hero, sidebar, currículo, instrutor
-│   │   └── ModuloAccordion.tsx # Accordion de módulos e aulas
-│   ├── Painel/              # Área do aluno (rota protegida)
-│   │   ├── index.tsx        # Layout com sidebar
+│   │   ├── index.tsx        # Layout Udemy: hero, sidebar sticky, currículo, instrutor
+│   │   └── ModuloAccordion.tsx
+│   │
+│   ├── CursoPlayer/         # Player de aulas (autenticado)
+│   │   ├── index.tsx        # Vídeo + sidebar de módulos + Q&A + avaliações
+│   │   └── ProvaModal.tsx   # Fluxo: intro → questões → resultado + gabarito
+│   │
+│   ├── Painel/              # Área do aluno (autenticado)
+│   │   ├── index.tsx        # Layout com sidebar de navegação
 │   │   └── sections/
-│   │       ├── VisaoGeral.tsx
-│   │       ├── Cursos.tsx
-│   │       ├── Certificados.tsx
-│   │       ├── Perfil.tsx
-│   │       └── Seguranca.tsx
-│   ├── CursoPlayer/         # Player de aulas (rota protegida)
-│   │   ├── index.tsx        # Vídeo + sidebar + Q&A + bloqueio de módulo por avaliação
-│   │   └── ProvaModal.tsx   # Modal de avaliação: intro → questões → resultado/gabarito
-│   ├── Admin/               # Área administrativa (rota admin)
+│   │       ├── VisaoGeral.tsx   # Progresso geral, metas, estatísticas
+│   │       ├── Cursos.tsx       # Cursos matriculados com barra de progresso
+│   │       ├── Certificados.tsx # Certificados emitidos
+│   │       ├── Perfil.tsx       # Editar perfil e avatar
+│   │       └── Seguranca.tsx    # Troca de senha (requer reautenticação)
+│   │
+│   ├── Admin/               # Painel administrativo (role admin)
 │   │   ├── index.tsx
 │   │   └── sections/
-│   │       ├── Dashboard.tsx
-│   │       ├── CursosAdmin.tsx
-│   │       ├── Alunos.tsx
-│   │       ├── MatriculasAdmin.tsx
-│   │       ├── ConteudoAdmin.tsx
-│   │       ├── PerguntasAdmin.tsx  # Q&A agrupado por curso com resposta inline
-│   │       └── ProvasAdmin.tsx     # CRUD de avaliações: criar prova, adicionar/editar/excluir questões
+│   │       ├── Dashboard.tsx        # Métricas: alunos, cursos, matrículas
+│   │       ├── Alunos.tsx           # Lista de alunos cadastrados
+│   │       ├── CursosAdmin.tsx      # CRUD de cursos
+│   │       ├── ConteudoAdmin.tsx    # CRUD de módulos e aulas (com reordenação)
+│   │       ├── MatriculasAdmin.tsx  # Liberar e revogar matrículas
+│   │       ├── PerguntasAdmin.tsx   # Q&A por curso com badge de pendências
+│   │       └── ProvasAdmin.tsx      # Builder de avaliações: provas e questões
+│   │
+│   ├── ResetPassword/       # Redefinição de senha via link de e-mail
 │   └── Privacidade/         # Política de privacidade
+│
 ├── routes/
-│   ├── AppRoutes.tsx        # Definição de rotas (inclui /reset-password)
-│   ├── ProtectedRoute.tsx   # Redireciona não autenticados; admins acessam /painel normalmente
-│   └── AdminRoute.tsx       # Redireciona não admins
-├── services/
-│   ├── authService.ts       # Login, cadastro, logout, resetPassword
+│   ├── AppRoutes.tsx        # Definição centralizada de rotas
+│   ├── ProtectedRoute.tsx   # Redireciona não autenticados para /
+│   └── AdminRoute.tsx       # Redireciona não admins para /painel
+│
+├── services/                # Camada de acesso ao Supabase
+│   ├── authService.ts       # login, register, logout, resetPassword, reauthenticate
 │   ├── cursosService.ts     # CRUD de cursos
-│   ├── matriculasService.ts # Matrículas: liberar, revogar, listar
-│   ├── modulosService.ts    # Módulos e aulas: CRUD, progresso, reordenação
-│   ├── perguntasService.ts  # Q&A: getByAula, getAll (admin), fazer, responder, deletar
-│   ├── profileService.ts    # Atualização de perfil
-│   └── provasService.ts     # Avaliações: CRUD de provas/questões, submeter tentativa, histórico
+│   ├── profileService.ts    # Perfil + upload/remoção de avatar (Storage)
+│   ├── modulosService.ts    # Módulos, aulas, progresso, reordenação
+│   ├── matriculasService.ts # Liberar, revogar, listar matrículas
+│   ├── perguntasService.ts  # Q&A: criar, responder, deletar
+│   └── provasService.ts     # Provas, questões, submissão via RPC
+│
 ├── types/
-│   └── index.ts             # Interfaces: Profile, Curso, Modulo, Aula, Prova, Questao, TentativaProva…
+│   └── index.ts             # Interfaces TypeScript de todos os modelos
+│
 └── utils/
-    ├── courseDataMap.ts     # Mapa estático dos 24 cursos (imagem, normas, objetivos por slug)
-    ├── formatters.ts        # formatCurrency, buildWhatsAppUrl, formatCPF, formatPhone
+    ├── courseDataMap.ts     # Metadados estáticos dos 24 cursos (imagem, NRs, objetivos)
+    ├── formatters.ts        # formatCPF, formatPhone, formatCurrency, buildWhatsAppUrl
     └── validators.ts        # isValidEmail, isValidCPF, isValidPhone, isStrongPassword
 
-avaliações/                  # Documentação e scripts de automação (ver guia dentro)
-├── guia-cadastro-questoes.md
-├── test_add_questao.mjs     # (gitignored — contém credenciais)
-├── test_bulk_questoes.mjs   # (gitignored — contém credenciais)
-└── screenshots/             # (gitignored)
+avaliações/                  # Scripts de automação e documentação (gitignored)
 ```
 
 ---
@@ -107,49 +154,32 @@ avaliações/                  # Documentação e scripts de automação (ver gu
 
 | Rota | Acesso | Descrição |
 |---|---|---|
-| `/` | Público | Landing page completa |
-| `/cursos/:id` | Público | Página de detalhes do curso (estilo Udemy) |
+| `/` | Público | Landing page institucional |
+| `/cursos/:id` | Público | Detalhes do curso (estilo Udemy) |
 | `/politica-de-privacidade` | Público | Política de privacidade |
 | `/reset-password` | Público | Redefinição de senha via link de e-mail |
-| `/painel` | Autenticado (aluno ou admin) | Dashboard do aluno — admin também acessa e vê botão "Painel Admin" na sidebar |
-| `/curso/:id` | Autenticado (aluno ou admin) | Player de aulas do curso |
-| `/admin` | Admin autenticado | Painel administrativo — possui link "Painel do aluno" na sidebar |
+| `/painel` | Autenticado | Dashboard do aluno (admin também acessa) |
+| `/curso/:id` | Autenticado | Player de aulas |
+| `/admin` | Admin | Painel administrativo |
+| `*` | Público | Fallback para `/` |
 
 ---
 
-## Funcionalidades do Player de Aulas (`/curso/:id`)
+## Funcionalidades Principais
 
-- Player de vídeo com suporte a YouTube, Vimeo e MP4/WebM direto
-- Sidebar com currículo completo (módulos + aulas) e progresso individual
-- Marcar/desmarcar aulas como concluídas com auto-avanço
-- Barra de progresso geral em porcentagem
-- **Aba Visão Geral** — descrição do curso, carga horária, nº de módulos e aulas
-- **Aba Perguntas e Respostas** — aluno faz perguntas por aula; admin responde pelo painel
-- **Avaliações por módulo** — ao concluir todas as aulas de um módulo, a prova é acionada automaticamente. Nota mínima 80% para aprovação. Módulos seguintes ficam bloqueados até aprovação
-
----
-
-## Painel Administrativo (`/admin`)
+### Landing Page (`/`)
 
 | Seção | Descrição |
 |---|---|
-| **Dashboard** | Métricas gerais (alunos, cursos, matrículas) |
-| **Alunos** | Listagem de alunos cadastrados |
-| **Cursos** | CRUD de cursos |
-| **Conteúdo** | Gerenciamento de módulos e aulas por curso |
-| **Matrículas** | Liberar e revogar acesso de alunos aos cursos |
-| **Perguntas e Respostas** | Q&A agrupado por curso — responder e excluir perguntas com badge de pendências |
-| **Avaliações** | CRUD de provas por módulo: criar prova, adicionar/editar/excluir questões de múltipla escolha |
+| **Hero** | Badge "Matrículas Abertas", título, CTAs e estatísticas |
+| **Sobre** | Missão, Visão, Valores e diferenciais da empresa |
+| **Serviços** | Pessoas e Empresas / Online e Presencial / Certificação / Consultorias |
+| **Cursos** | Grid com 24 cursos e filtro por categoria; clique abre modal com detalhes |
+| **Equipe** | 6 cards de instrutores especializados |
+| **Contato** | Telefone, e-mail, endereço, redes sociais e widget WhatsApp |
+| **Footer** | Marca, links, serviços e crédito NEXFORM |
 
----
-
-## Página de Detalhes do Curso (`/cursos/:id`)
-
-Página pública inspirada no layout da Udemy.
-
-**Seções:** Hero, sidebar sticky com CTA, "O que você vai aprender", currículo accordion, normas regulamentadoras, card de instrutor, sticky bottom bar (mobile).
-
-**Lógica do botão CTA:**
+**Lógica do botão de interesse nos cursos:**
 
 | Situação | Comportamento |
 |---|---|
@@ -157,32 +187,47 @@ Página pública inspirada no layout da Udemy.
 | Autenticado + matriculado | Navega para `/curso/:id` (player) |
 | Autenticado + não matriculado | Abre WhatsApp para solicitar matrícula |
 
----
+### Player de Aulas (`/curso/:id`)
 
-## Seções da Landing Page (`/`)
+- Player com suporte a YouTube, Vimeo, OneDrive e MP4/WebM direto
+- Sidebar com currículo completo (módulos → aulas) e checkmarks de progresso
+- Marcar/desmarcar aulas como concluídas com auto-avanço para a próxima
+- Barra de progresso geral em porcentagem
+- **Aba Visão Geral** — descrição, carga horária, nº de módulos e aulas
+- **Aba Q&A** — aluno faz perguntas por aula; admin responde pelo painel admin
+- **Avaliações por módulo** — prova acionada ao concluir todas as aulas do módulo; nota mínima 80%; módulo seguinte bloqueado até aprovação
+
+### Área do Aluno (`/painel`)
 
 | Seção | Descrição |
 |---|---|
-| **Hero** | Badge "Matrículas Abertas", título, CTAs e stats |
-| **Sobre** | Texto institucional, diferenciais, Missão/Visão/Valores |
-| **Banner de Serviços** | Pessoas e Empresas, Online e Presencial, Certificação, Consultorias |
-| **Cursos** | Grid de 24 cursos com filtro por categoria. Clique abre modal com info do curso (descrição, normas, botão de interesse via WhatsApp) |
-| **Equipe** | 6 cards de expertise dos instrutores |
-| **Contato** | Telefone/email/endereço, redes sociais, formulário WhatsApp, mapa embed |
-| **Footer** | 4 colunas: marca, contato, serviços, redes sociais + crédito NEXFORM |
+| **Visão Geral** | Progresso dos cursos, metas e estatísticas de aprendizado |
+| **Meu Perfil** | Editar nome, telefone, empresa, cargo, bio; upload/remoção de avatar |
+| **Cursos** | Cursos matriculados com barra de progresso; acesso ao player |
+| **Certificados** | Certificados emitidos (com download) |
+| **Segurança** | Troca de senha com reautenticação obrigatória |
+
+### Painel Administrativo (`/admin`)
+
+| Seção | Descrição |
+|---|---|
+| **Dashboard** | Métricas gerais: alunos, cursos, matrículas |
+| **Alunos** | Lista de alunos com busca |
+| **Cursos** | CRUD completo; toggle de visibilidade (`ativo`) |
+| **Conteúdo** | Módulos e aulas por curso com reordenação |
+| **Matrículas** | Liberar e revogar acesso de alunos por curso |
+| **Perguntas e Respostas** | Q&A agrupado por curso com badge de pendências; resposta inline |
+| **Avaliações** | Builder de provas por módulo: criar, editar e excluir questões de múltipla escolha |
 
 ---
 
 ## Catálogo de Cursos (24 no total)
 
-### Operacional (12)
-Empilhadeira, Guindaste, Guindauto, PEMT, Escavadeira Hidráulica, Pá Carregadeira, Retro Escavadeira, Trator, Mini Escavadeira, Ponte Rolante, Manipulador Telescópico, Jumbo.
+**Operacional (12):** Empilhadeira, Guindaste, Guindauto, PEMT, Escavadeira Hidráulica, Pá Carregadeira, Retro Escavadeira, Trator, Mini Escavadeira, Ponte Rolante, Manipulador Telescópico, Jumbo.
 
-### Desenvolvimento (4)
-NR-11 Movimentação de Cargas, Rigger Sinaleiro, Inspeção de Acessórios, Carreira Profissional.
+**Desenvolvimento (4):** NR-11 Movimentação de Cargas, Rigger Sinaleiro, Inspeção de Acessórios, Carreira Profissional.
 
-### Normas Regulamentadoras (8)
-NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, NR-33 Espaços Confinados, NR-34 Naval, NR-35 Trabalho em Altura.
+**Normas Regulamentadoras (8):** NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, NR-33 Espaços Confinados, NR-34 Naval, NR-35 Trabalho em Altura.
 
 ---
 
@@ -193,23 +238,23 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 |---|---|---|
 | `id` | uuid | Vinculado ao `auth.users` |
 | `nome` | string | Nome completo |
-| `cpf` | string | CPF único (apenas dígitos) |
+| `cpf` | string | CPF único (somente dígitos) |
 | `telefone` | string | Telefone de contato |
 | `empresa` | string? | Empresa onde trabalha |
 | `cargo` | string? | Cargo atual |
 | `bio` | string? | Biografia |
-| `foto_url` | string? | URL da foto de perfil |
-| `role` | `'aluno' \| 'admin'` | Papel do usuário |
+| `foto_url` | string? | URL da foto de perfil (Supabase Storage) |
+| `role` | `'aluno' \| 'admin'` | Papel do usuário no sistema |
 
 ### `cursos`
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `id` | uuid | Identificador |
 | `titulo` | string | Nome do curso |
-| `descricao` | string? | Descrição |
+| `descricao` | string? | Descrição detalhada |
 | `carga_horaria` | number? | Duração em horas |
 | `valor` | number? | Preço |
-| `video_url` | string? | Link do vídeo |
+| `video_url` | string? | Link do vídeo de apresentação |
 | `ativo` | boolean | Visibilidade na landing page |
 
 ### `modulos`
@@ -227,7 +272,7 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 | `modulo_id` | uuid | FK para `modulos` |
 | `titulo` | string | Nome da aula |
 | `descricao` | string? | Descrição |
-| `video_url` | string? | YouTube, Vimeo ou MP4 direto |
+| `video_url` | string? | YouTube, Vimeo, OneDrive ou MP4 direto |
 | `duracao_min` | number? | Duração em minutos |
 | `ordem` | number | Posição no módulo |
 
@@ -242,7 +287,6 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 ### `progresso_aulas`
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `id` | uuid | Identificador |
 | `aluno_id` | uuid | FK para `profiles` |
 | `aula_id` | uuid | FK para `aulas` |
 | `concluida` | boolean | Se a aula foi concluída |
@@ -256,13 +300,11 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 | `aluno_id` | uuid | FK para `profiles` |
 | `pergunta` | string | Texto da pergunta |
 | `resposta` | string? | Resposta do admin |
-| `respondido_por` | uuid? | FK para `profiles` (admin) |
+| `respondido_por` | uuid? | FK para `profiles` (admin que respondeu) |
 | `respondido_em` | timestamp? | Data da resposta |
 | `criado_em` | timestamp | Data da pergunta |
 
-**RLS aplicado:** alunos inserem apenas as próprias perguntas; admins podem responder e deletar qualquer pergunta; todos podem visualizar.
-
-### `provas`
+### `provas_modulos`
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `id` | uuid | Identificador |
@@ -274,84 +316,133 @@ NR-05 CIPA, NR-06 EPI, NR-10 Eletricidade, NR-12 Máquinas, NR-20 Inflamáveis, 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `id` | uuid | Identificador |
-| `prova_id` | uuid | FK para `provas` |
+| `prova_id` | uuid | FK para `provas_modulos` |
 | `enunciado` | string | Texto da pergunta |
 | `alternativas` | jsonb | `{ A, B, C, D }` — textos das alternativas |
-| `resposta_certa` | `'A'\|'B'\|'C'\|'D'` | Gabarito |
+| `resposta_certa` | `'A'\|'B'\|'C'\|'D'` | Gabarito (nunca exposto ao aluno) |
 | `ordem` | number | Posição na prova |
 
-### `tentativas_provas`
+### `tentativas_prova`
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `id` | uuid | Identificador |
 | `aluno_id` | uuid | FK para `profiles` |
-| `prova_id` | uuid | FK para `provas` |
+| `prova_id` | uuid | FK para `provas_modulos` |
 | `respostas` | jsonb | `{ questao_id: letra }` — respostas do aluno |
-| `acertos` | number | Quantidade de acertos |
+| `acertos` | number | Quantidade de acertos (calculado server-side) |
 | `total` | number | Total de questões |
 | `aprovado` | boolean | `acertos / total >= 0.8` |
-| `feita_em` | timestamp | Data da tentativa |
+| `feita_em` | timestamp | Data/hora da tentativa |
 
 ---
 
-## Configuração do Ambiente
+## Segurança
 
-O projeto inclui `.gitignore` na raiz protegendo `.env`, `node_modules/`, `dist/`, pastas externas como `playwright-mcp-main/` e os scripts/screenshots da pasta `avaliações/` (que contêm credenciais hardcoded).
+### Medidas implementadas
 
-Crie um arquivo `.env` na raiz do projeto:
+| Área | Implementação |
+|---|---|
+| **Gabarito de provas** | `resposta_certa` nunca retornada ao cliente no contexto do aluno; cálculo de acertos 100% server-side via RPC `submeter_tentativa_prova` |
+| **Reautenticação** | Troca de senha exige confirmar a senha atual via `signInWithPassword` antes de executar `updatePassword` |
+| **Content Security Policy** | Meta tag CSP em `index.html`: `script-src 'self'`, `connect-src *.supabase.co`, `frame-src youtube/vimeo/onedrive`, `object-src 'none'` |
+| **iframe sandbox** | `VideoPlayer` inclui `sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-forms"` |
+| **Upload de avatar** | Valida tipo MIME (`image/jpeg`, `image/png`, `image/webp`, `image/gif`) e tamanho máximo (2 MB) |
+| **Variáveis de ambiente** | `.env.example` sem dados reais; `.gitignore` protege `.env`, `*.mjs`, `*credentials*`, `*secrets*` |
 
-```env
-VITE_SUPABASE_URL=https://<seu-projeto>.supabase.co
-VITE_SUPABASE_ANON_KEY=<sua-anon-key>
-VITE_WHATSAPP_NUMBER=5522998588802
+### RPC `submeter_tentativa_prova` (Supabase)
+
+Função SQL necessária para a correção server-side das avaliações:
+
+```sql
+CREATE OR REPLACE FUNCTION submeter_tentativa_prova(
+  p_aluno_id uuid,
+  p_prova_id uuid,
+  p_respostas jsonb
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_questao RECORD;
+  v_acertos int := 0;
+  v_total   int := 0;
+  v_aprovado boolean;
+  v_result  json;
+BEGIN
+  FOR v_questao IN
+    SELECT id, resposta_certa FROM questoes WHERE prova_id = p_prova_id
+  LOOP
+    v_total := v_total + 1;
+    IF (p_respostas ->> v_questao.id::text) = v_questao.resposta_certa THEN
+      v_acertos := v_acertos + 1;
+    END IF;
+  END LOOP;
+
+  v_aprovado := v_total > 0 AND (v_acertos::float / v_total) >= 0.8;
+
+  INSERT INTO tentativas_prova (aluno_id, prova_id, respostas, acertos, total, aprovado)
+  VALUES (p_aluno_id, p_prova_id, p_respostas, v_acertos, v_total, v_aprovado)
+  RETURNING to_json(tentativas_prova.*) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;
 ```
 
----
+### RLS Policies recomendadas (Supabase Dashboard)
 
-## Scripts
+```sql
+-- Somente admins podem alterar o campo 'role'
+CREATE POLICY "Somente admin pode alterar role"
+ON profiles FOR UPDATE
+USING (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+)
+WITH CHECK (
+  (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+);
 
-```bash
-# Instalar dependências
-npm install
+-- Somente admins (ou o próprio usuário) podem deletar profiles
+CREATE POLICY "Somente admin pode deletar"
+ON profiles FOR DELETE
+USING (
+  id = auth.uid()
+  OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+);
 
-# Iniciar servidor de desenvolvimento
-npm run dev
-
-# Build para produção
-npm run build
-
-# Pré-visualizar build
-npm run preview
+-- Aluno lê apenas o próprio perfil; admin lê todos
+CREATE POLICY "Leitura de profiles"
+ON profiles FOR SELECT
+USING (
+  id = auth.uid()
+  OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+);
 ```
 
 ---
 
 ## Notas Técnicas
 
-### Autenticação
-- **Login sem travamento** — `LoginModal` aguarda o `user` ser confirmado pelo `AuthContext` via `useEffect` antes de fechar e navegar. Elimina o race condition onde `ProtectedRoute` via `user=null` e redirecionava de volta para `/`
-- **Sem loop ao trocar de aba** — `AuthContext.onAuthStateChange` não seta `loading=true` após a carga inicial. Eventos `TOKEN_REFRESHED` (disparados pelo Supabase ao voltar de outra aba) são tratados silenciosamente
-- **Token corrompido no localStorage** — `getSession()` tem `.catch()` que chama `signOut()` e desbloqueia o `loading`, evitando que a página trave no spinner caso o refresh token seja inválido
-- **Sessão expirada notifica o usuário** — `onAuthStateChange` detecta `SIGNED_OUT` inesperado e exibe um toast informando que a sessão expirou
-- **Nunca chamar `signOut()` dentro de `onAuthStateChange`** — corromperia o estado interno do cliente Supabase, travando todas as requisições subsequentes
-- **Admin acessa os dois painéis** — `ProtectedRoute` não redireciona mais admins; admins acessam `/painel` normalmente e veem um botão amarelo "Painel Admin" na sidebar. O `LoginModal` navega admins para `/admin` ao logar; o painel admin possui link "Painel do aluno" na sidebar footer
-- **Modal de boas-vindas — novo cadastro** — após o registro, `RegisterModal` navega para `/painel` com `state: { novoAluno: true }`; `PainelPage` detecta e exibe modal com spinner e mensagem "Estamos criando seu painel de Aluno" por 2,5 s
-- **Modal de boas-vindas — retorno** — no login bem-sucedido, `LoginModal` navega com `state: { bemVindoDeVolta: true }`; `PainelPage` exibe modal com avatar (inicial do nome), "Bem-vindo(a) de volta, [primeiro nome]!" e botão "Continuar" (auto-fecha em 3 s)
-- **Race condition no registro** — ao criar conta, `SIGNED_IN` dispara antes do INSERT em `profiles`, fazendo `refreshProfile` retornar cedo (`user` ainda null no estado React). Corrigido em `AuthContext.refreshProfile`: usa `user?.id ?? getSession().user.id` como fallback
-- **Sessão armazenada em localStorage** — sem uso de cookies; padrão do Supabase client para SPAs
-- **Recuperação de senha** — `authService.resetPassword()` envia link via Supabase; `/reset-password` aguarda evento `PASSWORD_RECOVERY` para exibir o formulário de nova senha
+### Autenticação e Sessão
 
-### Painel Admin
-- **Criação de aulas sem travamento** — `reloadModulos()` no `ConteudoAdmin` foi desacoplado do bloco `try/finally`, garantindo que `setSaving(false)` sempre execute
-- **Avaliações** — `ProvasAdmin` faz uma única query para buscar todas as provas dos módulos do curso (evita N+1). A aprovação do aluno é calculada no cliente: `acertos / total >= 0.8`
+- **Sem race condition no login** — `LoginModal` usa `useEffect` aguardando o `user` ser confirmado pelo `AuthContext` antes de fechar e navegar. Evita `ProtectedRoute` ver `user=null` e redirecionar de volta para `/`
+- **Token corrompido no localStorage** — `getSession()` tem `.catch()` que chama `signOut()` graciosamente, evitando trava infinita no spinner
+- **Sem loop ao trocar de aba** — `onAuthStateChange` não seta `loading=true` após a carga inicial; eventos `TOKEN_REFRESHED` são tratados silenciosamente
+- **Sessão expirada** — `SIGNED_OUT` inesperado exibe toast informando o usuário
+- **Race condition no registro** — `refreshProfile` usa `user?.id ?? getSession().user.id` como fallback porque `SIGNED_IN` pode disparar antes do INSERT em `profiles` concluir
+- **Recuperação de senha** — `authService.resetPassword()` envia link via Supabase; `/reset-password` aguarda evento `PASSWORD_RECOVERY` para exibir o formulário
 
-### Segurança (auditoria aplicada)
-- **Gabarito nunca exposto** — `getProvaByModulo` exclui `resposta_certa` do SELECT público; cálculo de acertos feito server-side via RPC `submeter_tentativa_prova` (Supabase SQL)
-- **Reautenticação corrigida** — `Seguranca.tsx` usava `profile.nome` como e-mail; corrigido para `user.email`
-- **Content Security Policy** — `<meta http-equiv="Content-Security-Policy">` em `index.html` com `script-src 'self'`, `connect-src *.supabase.co`, `frame-src youtube/vimeo/onedrive`, `object-src 'none'`
-- **iframe sandbox** — `VideoPlayer` em `CursoPlayer` inclui `sandbox="allow-scripts allow-same-origin allow-presentation allow-fullscreen allow-popups allow-forms"` para isolar o conteúdo embutido
-- **`.env.example` sem dados reais** — URL do Supabase e número WhatsApp substituídos por placeholders genéricos
-- **`.gitignore` ampliado** — `*.mjs`, `**/*.mjs`, `*credentials*`, `*secrets*` para prevenir scripts com credenciais hardcoded
+### Admin
+
+- **Dual access** — Admin acessa `/painel` (visão aluno) e `/admin` via sidebar. `ProtectedRoute` não redireciona admins; o `LoginModal` navega admins para `/admin`
+- **Sem N+1 nas avaliações** — `getProvasByModulos()` busca todas as provas dos módulos em uma única query
+
+### Build
+
+- TypeScript com `strict: true` — manter sempre ativo
+- Após `npm run build`, verificar `dist/assets/*.js` para confirmar que nenhuma `service_role` key está presente
+- Variáveis `VITE_*` aparecem no bundle — isso é esperado; a segurança é garantida pelo RLS
 
 ---
 
@@ -361,4 +452,4 @@ npm run preview
 Av. Liberdade, 43 - Grussaí, São João da Barra – RJ
 (22) 99858-8802 · elevabrtreinamentos@gmail.com
 
-Site desenvolvido por [NEXFORM - Transformação Digital](https://www.linkedin.com/company/nexformsolu%C3%A7%C3%B5estecnologicas/)
+Desenvolvido por [NEXFORM - Transformação Digital](https://www.linkedin.com/company/nexformsolu%C3%A7%C3%B5estecnologicas/)
