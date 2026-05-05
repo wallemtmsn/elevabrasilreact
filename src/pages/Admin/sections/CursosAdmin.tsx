@@ -11,10 +11,16 @@ type CursoForm = {
   carga_horaria: string
   valor: string
   video_url: string
+  nr_referencia: string
+  exige_pratico: boolean
+  validade_meses: string
   ativo: boolean
 }
 
-const emptyForm: CursoForm = { titulo: '', descricao: '', carga_horaria: '', valor: '', video_url: '', ativo: true }
+const emptyForm: CursoForm = {
+  titulo: '', descricao: '', carga_horaria: '', valor: '', video_url: '',
+  nr_referencia: '', exige_pratico: true, validade_meses: '12', ativo: true,
+}
 
 export function CursosAdmin() {
   const { showToast } = useToast()
@@ -57,6 +63,9 @@ export function CursosAdmin() {
       carga_horaria: c.carga_horaria?.toString() || '',
       valor: c.valor?.toString() || '',
       video_url: c.video_url || '',
+      nr_referencia: c.nr_referencia || '',
+      exige_pratico: c.exige_pratico,
+      validade_meses: c.validade_meses?.toString() || '12',
       ativo: c.ativo,
     })
     setModal('edit')
@@ -72,6 +81,9 @@ export function CursosAdmin() {
         carga_horaria: form.carga_horaria ? parseInt(form.carga_horaria) : null,
         valor: form.valor ? parseFloat(form.valor) : null,
         video_url: form.video_url.trim() || null,
+        nr_referencia: form.nr_referencia.trim() || null,
+        exige_pratico: form.exige_pratico,
+        validade_meses: form.validade_meses ? parseInt(form.validade_meses) : 12,
         ativo: form.ativo,
       }
       if (modal === 'edit' && editing) {
@@ -133,6 +145,16 @@ export function CursosAdmin() {
                     </span>
                   </div>
                   {curso.descricao && <p className="text-xs text-steel-500 line-clamp-2">{curso.descricao}</p>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {curso.nr_referencia && (
+                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">
+                        {curso.nr_referencia}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${curso.exige_pratico ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                      {curso.exige_pratico ? 'Com prático' : 'Só teórico'}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-3 text-xs text-steel-400 pt-1 border-t border-steel-100">
                     {curso.carga_horaria && <span>{curso.carga_horaria}h</span>}
                     <span>{formatCurrency(curso.valor)}</span>
@@ -186,6 +208,40 @@ export function CursosAdmin() {
             placeholder="https://player.vimeo.com/video/..."
             helpText="Use a URL do player embed do Vimeo (Share → Embed)"
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="NR de referência"
+              value={form.nr_referencia}
+              onChange={set('nr_referencia')}
+              placeholder="Ex: NR-11, NR-12"
+              helpText="Norma regulamentadora do treinamento"
+            />
+            <Input
+              label="Validade (meses)"
+              type="number"
+              min="1"
+              value={form.validade_meses}
+              onChange={set('validade_meses')}
+              placeholder="12"
+              helpText="Validade do certificado emitido"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.exige_pratico}
+                onChange={e => setForm(p => ({ ...p, exige_pratico: e.target.checked }))}
+                className="w-4 h-4 accent-navy-500"
+              />
+              <span className="text-sm text-steel-700">Exige teste prático para certificado</span>
+            </label>
+            {!form.exige_pratico && (
+              <p className="text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                O certificado será emitido automaticamente ao concluir o teórico.
+              </p>
+            )}
+          </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
