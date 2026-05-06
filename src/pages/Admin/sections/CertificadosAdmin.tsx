@@ -48,7 +48,27 @@ export function CertificadosAdmin() {
   const [modalPresencial, setModalPresencial] = useState(false)
   const [form, setForm] = useState<FormPresencial>(emptyForm)
   const [pdfData, setPdfData] = useState<CertificadoPDFData | null>(null)
-  const [downloading, setDownloading] = useState(false)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [preparando, setPreparando] = useState(false)
+
+  // Gera o blob em background assim que pdfData é definido
+  useEffect(() => {
+    if (!pdfData) {
+      setBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+      return
+    }
+    setPreparando(true)
+    pdf(<CertificadoPDF dados={pdfData} />)
+      .toBlob()
+      .then(blob => {
+        const url = URL.createObjectURL(blob)
+        setBlobUrl(url)
+      })
+      .catch(() => showToast('Erro ao preparar PDF. Tente novamente.', 'error'))
+      .finally(() => setPreparando(false))
+
+    return () => setBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+  }, [pdfData])
 
   const setField = (f: keyof FormPresencial) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [f]: e.target.value }))
@@ -57,6 +77,11 @@ export function CertificadosAdmin() {
     setForm(emptyForm)
     setPdfData(null)
     setModalPresencial(true)
+  }
+
+  function fecharModal() {
+    setModalPresencial(false)
+    setPdfData(null)
   }
 
   function gerarPDF() {
@@ -75,26 +100,6 @@ export function CertificadosAdmin() {
       numero_serie: gerarSerie(),
       tipo: 'presencial',
     })
-  }
-
-  async function handleDownloadPDF() {
-    if (!pdfData) return
-    setDownloading(true)
-    try {
-      const blob = await pdf(<CertificadoPDF dados={pdfData} />).toBlob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `certificado-${pdfData.numero_serie}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch {
-      showToast('Erro ao gerar PDF. Tente novamente.', 'error')
-    } finally {
-      setDownloading(false)
-    }
   }
 
   const load = async () => {
@@ -263,7 +268,7 @@ export function CertificadosAdmin() {
       {/* Modal — Emissão Presencial */}
       <Modal
         open={modalPresencial}
-        onClose={() => { setModalPresencial(false); setPdfData(null) }}
+        onClose={fecharModal}
         title="Emitir Certificado Presencial"
         maxWidth="lg"
       >
@@ -321,23 +326,29 @@ export function CertificadosAdmin() {
           />
 
           <div className="flex gap-2 justify-end pt-2">
-            <Button variant="ghost" onClick={() => { setModalPresencial(false); setPdfData(null) }}>
+            <Button variant="ghost" onClick={fecharModal}>
               Cancelar
             </Button>
             {!pdfData ? (
               <Button onClick={gerarPDF}>
                 Gerar Certificado
               </Button>
-            ) : (
-              <Button loading={downloading} onClick={handleDownloadPDF}>
-                {!downloading && (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                )}
-                {downloading ? 'Gerando PDF...' : 'Baixar PDF'}
+            ) : preparando ? (
+              <Button loading disabled>
+                Preparando PDF...
               </Button>
-            )}
+            ) : blobUrl ? (
+              <a
+                href={blobUrl}
+                download={`certificado-${pdfData.numero_serie}.pdf`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Baixar PDF
+              </a>
+            ) : null}
           </div>
         </div>
       </Modal>
