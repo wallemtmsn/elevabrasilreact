@@ -1,9 +1,41 @@
 import { useState, useEffect } from 'react'
+import { PDFDownloadLink } from '@react-pdf/renderer'
 import { certificadosService } from '@/services/certificadosService'
 import { useToast } from '@/contexts/ToastContext'
-import { Button } from '@/components/ui'
+import { Button, Input, Modal } from '@/components/ui'
 import { formatDate } from '@/utils/formatters'
+import { CertificadoPDF } from '@/components/certificados/CertificadoPDF'
+import type { CertificadoPDFData } from '@/components/certificados/CertificadoPDF'
 import type { CertificadoAdmin, MetricasCertificados } from '@/types'
+
+type FormPresencial = {
+  nome_aluno: string
+  cpf_aluno: string
+  nome_curso: string
+  nr_referencia: string
+  carga_horaria: string
+  instrutor: string
+  validade_meses: string
+}
+
+const emptyForm: FormPresencial = {
+  nome_aluno: '', cpf_aluno: '', nome_curso: '',
+  nr_referencia: '', carga_horaria: '', instrutor: '', validade_meses: '12',
+}
+
+function gerarSerie(): string {
+  const ano = new Date().getFullYear()
+  const num = String(Math.floor(Math.random() * 999999)).padStart(6, '0')
+  return `PRES-${ano}-${num}`
+}
+
+function calcularValidade(meses: string): string | null {
+  const n = parseInt(meses)
+  if (!n) return null
+  const d = new Date()
+  d.setMonth(d.getMonth() + n)
+  return d.toISOString()
+}
 
 export function CertificadosAdmin() {
   const { showToast } = useToast()
@@ -11,6 +43,38 @@ export function CertificadosAdmin() {
   const [metricas, setMetricas] = useState<MetricasCertificados | null>(null)
   const [loading, setLoading] = useState(true)
   const [emitindo, setEmitindo] = useState<string | null>(null)
+
+  // Modal emissão presencial
+  const [modalPresencial, setModalPresencial] = useState(false)
+  const [form, setForm] = useState<FormPresencial>(emptyForm)
+  const [pdfData, setPdfData] = useState<CertificadoPDFData | null>(null)
+
+  const setField = (f: keyof FormPresencial) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, [f]: e.target.value }))
+
+  function abrirModal() {
+    setForm(emptyForm)
+    setPdfData(null)
+    setModalPresencial(true)
+  }
+
+  function gerarPDF() {
+    if (!form.nome_aluno.trim()) { showToast('Nome do aluno obrigatório.', 'error'); return }
+    if (!form.nome_curso.trim()) { showToast('Nome do curso obrigatório.', 'error'); return }
+    if (!form.instrutor.trim()) { showToast('Nome do instrutor obrigatório.', 'error'); return }
+    setPdfData({
+      nome_aluno: form.nome_aluno.trim(),
+      cpf_aluno: form.cpf_aluno.trim() || null,
+      nome_curso: form.nome_curso.trim(),
+      nr_referencia: form.nr_referencia.trim() || null,
+      carga_horaria: form.carga_horaria ? parseInt(form.carga_horaria) : null,
+      instrutor: form.instrutor.trim(),
+      data_emissao: new Date().toISOString(),
+      data_validade: calcularValidade(form.validade_meses),
+      numero_serie: gerarSerie(),
+      tipo: 'presencial',
+    })
+  }
 
   const load = async () => {
     try {
@@ -53,9 +117,17 @@ export function CertificadosAdmin() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="font-montserrat text-xl font-bold text-steel-800">Certificados</h2>
-        <Button size="sm" variant="secondary" onClick={load}>Atualizar</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={load}>Atualizar</Button>
+          <Button size="sm" onClick={abrirModal}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Emitir Presencial
+          </Button>
+        </div>
       </div>
 
       {/* Métricas */}
@@ -166,6 +238,105 @@ export function CertificadosAdmin() {
           ))}
         </div>
       )}
+
+      {/* Modal — Emissão Presencial */}
+      <Modal
+        open={modalPresencial}
+        onClose={() => { setModalPresencial(false); setPdfData(null) }}
+        title="Emitir Certificado Presencial"
+        maxWidth="lg"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nome do aluno *"
+              value={form.nome_aluno}
+              onChange={setField('nome_aluno')}
+              placeholder="Nome completo"
+            />
+            <Input
+              label="CPF do aluno"
+              value={form.cpf_aluno}
+              onChange={setField('cpf_aluno')}
+              placeholder="000.000.000-00"
+              helpText="Opcional"
+            />
+          </div>
+          <Input
+            label="Nome do curso *"
+            value={form.nome_curso}
+            onChange={setField('nome_curso')}
+            placeholder="Ex: NR-10 — Segurança em Instalações Elétricas"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="NR de referência"
+              value={form.nr_referencia}
+              onChange={setField('nr_referencia')}
+              placeholder="Ex: NR-10"
+            />
+            <Input
+              label="Carga horária (h)"
+              type="number"
+              min="1"
+              value={form.carga_horaria}
+              onChange={setField('carga_horaria')}
+              placeholder="40"
+            />
+            <Input
+              label="Validade (meses)"
+              type="number"
+              min="1"
+              value={form.validade_meses}
+              onChange={setField('validade_meses')}
+              placeholder="12"
+            />
+          </div>
+          <Input
+            label="Nome do instrutor *"
+            value={form.instrutor}
+            onChange={setField('instrutor')}
+            placeholder="Aparece na linha de assinatura do certificado"
+          />
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="ghost" onClick={() => { setModalPresencial(false); setPdfData(null) }}>
+              Cancelar
+            </Button>
+            {!pdfData ? (
+              <Button onClick={gerarPDF}>
+                Gerar Certificado
+              </Button>
+            ) : (
+              <PDFDownloadLink
+                document={<CertificadoPDF dados={pdfData} />}
+                fileName={`certificado-${pdfData.numero_serie}.pdf`}
+              >
+                {({ loading: pdfLoading }) => (
+                  <Button disabled={pdfLoading}>
+                    {pdfLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Gerando PDF...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Baixar PDF
+                      </>
+                    )}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

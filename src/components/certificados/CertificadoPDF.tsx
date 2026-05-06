@@ -11,7 +11,7 @@ import {
 // Dados necessários para renderizar o certificado
 export interface CertificadoPDFData {
   nome_aluno: string
-  cpf_aluno: string
+  cpf_aluno?: string | null
   foto_url?: string | null
   nome_curso: string
   nr_referencia?: string | null
@@ -19,7 +19,8 @@ export interface CertificadoPDFData {
   data_emissao: string
   data_validade?: string | null
   numero_serie: string
-  tipo: 'teorico' | 'completo'
+  tipo: 'teorico' | 'completo' | 'presencial'
+  instrutor?: string | null
 }
 
 Font.register({
@@ -205,7 +206,9 @@ export function CertificadoPDF({ dados }: { dados: CertificadoPDFData }) {
 
           <Text style={styles.textoNormal}>Certificamos que</Text>
           <Text style={styles.nomeAluno}>{dados.nome_aluno}</Text>
-          <Text style={styles.cpf}>CPF: {dados.cpf_aluno}</Text>
+          {dados.cpf_aluno && (
+            <Text style={styles.cpf}>CPF: {dados.cpf_aluno}</Text>
+          )}
 
           <Text style={styles.textoNormal}>concluiu com êxito o treinamento</Text>
           <Text style={styles.nomeCurso}>{dados.nome_curso}</Text>
@@ -240,12 +243,18 @@ export function CertificadoPDF({ dados }: { dados: CertificadoPDFData }) {
             <View>
               <Text style={styles.serieText}>Nº de Série: {dados.numero_serie}</Text>
               <Text style={[styles.tipoBadge, { marginTop: 4 }]}>
-                {dados.tipo === 'completo' ? 'Certificado Completo (Teórico + Prático)' : 'Certificado Teórico'}
+                {dados.tipo === 'completo'
+                  ? 'Certificado Completo (Teórico + Prático)'
+                  : dados.tipo === 'presencial'
+                  ? 'Certificado Presencial'
+                  : 'Certificado Teórico'}
               </Text>
             </View>
             <View style={styles.assinaturaBox}>
               <View style={styles.linhaAssinatura} />
-              <Text style={styles.assinaturaLabel}>Responsável Técnico</Text>
+              <Text style={styles.assinaturaLabel}>
+                {dados.instrutor ?? 'Responsável Técnico'}
+              </Text>
               <Text style={styles.assinaturaSubLabel}>Eleva Brasil Treinamentos</Text>
             </View>
           </View>
