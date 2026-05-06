@@ -76,6 +76,16 @@ export function CertificadosAdmin() {
     setPdfData(null)
   }
 
+  // Aceita string vazia (→ null) ou inteiro >= 1. Caso contrário, retorna 'invalido'
+  // — impede que parseInt('-5') ou parseInt('abc') passem direto à RPC.
+  function parseInteiroPositivoOpcional(raw: string): number | null | 'invalido' {
+    const trimmed = raw.trim()
+    if (!trimmed) return null
+    const n = Number(trimmed)
+    if (!Number.isInteger(n) || n < 1) return 'invalido'
+    return n
+  }
+
   // Persiste o certificado via RPC e, com a resposta server-side (serial único +
   // data_validade calculada), monta o pdfData para renderização local do PDF.
   async function gerarPDF() {
@@ -83,8 +93,14 @@ export function CertificadosAdmin() {
     if (!form.nome_curso.trim()) { showToast('Nome do curso obrigatório.', 'error'); return }
     if (!form.instrutor.trim()) { showToast('Nome do instrutor obrigatório.', 'error'); return }
 
-    const validadeMesesNum = form.validade_meses ? parseInt(form.validade_meses) : null
-    const cargaHorariaNum  = form.carga_horaria  ? parseInt(form.carga_horaria)  : null
+    const validadeMesesNum = parseInteiroPositivoOpcional(form.validade_meses)
+    if (validadeMesesNum === 'invalido') {
+      showToast('Validade (meses) deve ser um inteiro positivo.', 'error'); return
+    }
+    const cargaHorariaNum = parseInteiroPositivoOpcional(form.carga_horaria)
+    if (cargaHorariaNum === 'invalido') {
+      showToast('Carga horária deve ser um inteiro positivo.', 'error'); return
+    }
 
     setEmitindoPresencial(true)
     try {
