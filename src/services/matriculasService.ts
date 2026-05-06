@@ -1,13 +1,7 @@
 import { supabase } from '@/lib/supabase'
-import type { Curso } from '@/types'
+import type { Curso, Matricula } from '@/types'
 
-export interface Matricula {
-  id: string
-  aluno_id: string
-  curso_id: string
-  liberado_em: string
-  liberado_por?: string | null
-}
+export type { Matricula }
 
 export const matriculasService = {
   // retorna os curso_ids que o aluno tem acesso
@@ -75,5 +69,14 @@ export const matriculasService = {
       .select('aluno_id, curso_id')
     if (error) throw new Error(error.message)
     return data || []
+  },
+
+  // admin: marca prático como concluído e registra data
+  async marcarPraticoCompleto(matriculaId: string): Promise<void> {
+    const { error } = await supabase
+      .from('matriculas')
+      .update({ pratico_concluido: true, pratico_data: new Date().toISOString() })
+      .eq('id', matriculaId)
+    if (error) throw new Error(error.message)
   },
 }
