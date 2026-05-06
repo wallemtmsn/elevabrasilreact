@@ -757,40 +757,65 @@ export function CursoPlayerPage() {
               const concluidasMod = aulasMod.filter(a => concluidas.has(a.id)).length
               const expandido = modulosExpandidos.has(modulo.id)
               const bloqueado = isModuloBloqueado(mIdx)
+              const provaModulo = provasMap[modulo.id]
+              const todasAulasConcluidas = aulasMod.length > 0 && concluidasMod === aulasMod.length
+              const provaAprovada = modulosAprovados.has(modulo.id)
+              const provaAguardando = !bloqueado && !!provaModulo && todasAulasConcluidas && !provaAprovada
+
+              async function abrirProvaModulo(e: React.MouseEvent) {
+                e.stopPropagation()
+                const provaCompleta = await provasService.getProvaByModulo(modulo.id)
+                if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
+                  setProvaAtiva({ prova: provaCompleta, moduloTitulo: modulo.titulo })
+                }
+              }
 
               return (
                 <div key={modulo.id} className="border-b border-steel-100">
                   {/* Module header */}
-                  <button
-                    onClick={() => !bloqueado && toggleModulo(modulo.id)}
-                    className={[
-                      'w-full flex items-start gap-2 px-4 py-3 text-left transition-colors',
-                      bloqueado ? 'bg-steel-100 cursor-not-allowed opacity-60' : 'bg-steel-50 hover:bg-steel-100',
-                    ].join(' ')}
-                  >
-                    {bloqueado ? (
-                      <Lock className="w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <svg
-                        className={`w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5 transition-transform duration-150 ${expandido ? 'rotate-90' : ''}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-steel-700 leading-snug">
-                        Seção {mIdx + 1}: {modulo.titulo}
-                      </p>
+                  <div className={[
+                    'flex items-start gap-2 px-4 py-3 transition-colors',
+                    bloqueado ? 'bg-steel-100 opacity-60' : 'bg-steel-50',
+                  ].join(' ')}>
+                    <button
+                      onClick={() => !bloqueado && toggleModulo(modulo.id)}
+                      className={[
+                        'flex items-start gap-2 text-left flex-1 min-w-0',
+                        bloqueado ? 'cursor-not-allowed' : 'hover:opacity-80',
+                      ].join(' ')}
+                    >
                       {bloqueado ? (
-                        <p className="text-xs text-steel-400 mt-0.5">Conclua a avaliação anterior</p>
+                        <Lock className="w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <p className="text-xs text-steel-400 mt-0.5">
-                          {concluidasMod}/{aulasMod.length} | {aulasMod.reduce((s, a) => s + (a.duracao_min || 0), 0)}min
-                        </p>
+                        <svg
+                          className={`w-4 h-4 text-steel-400 flex-shrink-0 mt-0.5 transition-transform duration-150 ${expandido ? 'rotate-90' : ''}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       )}
-                    </div>
-                  </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-steel-700 leading-snug">
+                          Seção {mIdx + 1}: {modulo.titulo}
+                        </p>
+                        {bloqueado ? (
+                          <p className="text-xs text-steel-400 mt-0.5">Conclua a avaliação anterior</p>
+                        ) : (
+                          <p className="text-xs text-steel-400 mt-0.5">
+                            {concluidasMod}/{aulasMod.length} | {aulasMod.reduce((s, a) => s + (a.duracao_min || 0), 0)}min
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                    {provaAguardando && (
+                      <button
+                        onClick={abrirProvaModulo}
+                        className="flex-shrink-0 text-xs px-2 py-1 rounded-lg bg-amber-100 text-amber-700 font-medium hover:bg-amber-200 transition-colors whitespace-nowrap"
+                      >
+                        Fazer avaliação
+                      </button>
+                    )}
+                  </div>
 
                   {/* Aulas list */}
                   {!bloqueado && expandido && aulasMod.map((aula) => {
