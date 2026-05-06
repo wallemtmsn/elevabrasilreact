@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Curso, Matricula } from '@/types'
+import type { Certificado, Curso, Matricula } from '@/types'
 
 export type { Matricula }
 
@@ -78,5 +78,16 @@ export const matriculasService = {
       .update({ pratico_concluido: true, pratico_data: new Date().toISOString() })
       .eq('id', matriculaId)
     if (error) throw new Error(error.message)
+  },
+
+  // admin: marca prático e emite certificado em uma única transação server-side.
+  // Se a emissão falhar (teórico pendente, já emitido, etc.), o UPDATE do
+  // pratico_concluido é revertido — sem estados inconsistentes.
+  async marcarPraticoEEmitir(matriculaId: string): Promise<Certificado> {
+    const { data, error } = await supabase.rpc('marcar_pratico_e_emitir', {
+      p_matricula_id: matriculaId,
+    })
+    if (error) throw new Error(error.message)
+    return data as Certificado
   },
 }

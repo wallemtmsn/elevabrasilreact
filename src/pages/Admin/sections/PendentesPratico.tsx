@@ -26,22 +26,20 @@ export function PendentesPratico() {
 
   useEffect(() => { load() }, [])
 
+  // Chamada atômica: marca prático + emite certificado em uma única transação
+  // server-side. Falha de qualquer etapa faz rollback completo, evitando estado
+  // pratico_concluido=true sem certificado.
   const handleMarcarPratico = async () => {
     if (!confirmando) return
     setSalvando(true)
     try {
-      await matriculasService.marcarPraticoCompleto(confirmando.matricula_id)
-      // Tenta emitir certificado automaticamente após marcar prático
-      try {
-        await certificadosService.emitirCertificado(confirmando.aluno_id, confirmando.curso_id)
-        showToast('Prático concluído e certificado emitido!', 'success')
-      } catch {
-        showToast('Prático concluído! Certificado poderá ser emitido na aba Certificados.', 'success')
-      }
+      await matriculasService.marcarPraticoEEmitir(confirmando.matricula_id)
+      showToast('Prático concluído e certificado emitido!', 'success')
       setConfirmando(null)
       await load()
     } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Erro ao marcar prático.', 'error')
+      const msg = err instanceof Error ? err.message : 'Erro ao concluir prático.'
+      showToast(msg, 'error')
     } finally {
       setSalvando(false)
     }
