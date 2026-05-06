@@ -21,50 +21,45 @@ function isVencido(data?: string | null): boolean {
 }
 
 function DownloadButton({ pdfData, numeroSerie }: { pdfData: CertificadoPDFData; numeroSerie: string }) {
-  const [downloading, setDownloading] = useState(false)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [preparando, setPreparando] = useState(true)
 
-  async function handleDownload() {
-    setDownloading(true)
-    try {
-      const blob = await pdf(<CertificadoPDF dados={pdfData} />).toBlob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `certificado-${numeroSerie}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch {
-      alert('Erro ao gerar PDF. Tente novamente.')
-    } finally {
-      setDownloading(false)
-    }
+  useEffect(() => {
+    let url: string
+    pdf(<CertificadoPDF dados={pdfData} />)
+      .toBlob()
+      .then(blob => {
+        url = URL.createObjectURL(blob)
+        setBlobUrl(url)
+      })
+      .catch(() => {})
+      .finally(() => setPreparando(false))
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [pdfData])
+
+  if (preparando) {
+    return <div className="h-10 bg-steel-100 rounded-xl animate-pulse mt-auto" />
+  }
+
+  if (!blobUrl) {
+    return (
+      <div className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-steel-200 text-steel-500 text-sm font-medium cursor-not-allowed">
+        Erro ao preparar PDF
+      </div>
+    )
   }
 
   return (
-    <button
-      onClick={handleDownload}
-      disabled={downloading}
-      className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+    <a
+      href={blobUrl}
+      download={`certificado-${numeroSerie}.pdf`}
+      className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors"
     >
-      {downloading ? (
-        <>
-          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Gerando PDF...
-        </>
-      ) : (
-        <>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Baixar Certificado PDF
-        </>
-      )}
-    </button>
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      Baixar Certificado PDF
+    </a>
   )
 }
 
