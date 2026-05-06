@@ -74,17 +74,22 @@ export function Certificados() {
     const load = async () => {
       try {
         const certs = await certificadosService.getMeusCertificados(user.id)
-        setCertificados(certs)
+        // Aluno vê apenas certificados vinculados (a RLS já filtra presenciais,
+        // mas filtramos no client para satisfazer o tipo nullable).
+        const certsVinculados = certs.filter(
+          (c): c is typeof c & { curso_id: string } => c.curso_id !== null
+        )
+        setCertificados(certsVinculados)
 
-        if (certs.length > 0) {
-          const cursoIds = [...new Set(certs.map(c => c.curso_id))]
+        if (certsVinculados.length > 0) {
+          const cursoIds = [...new Set(certsVinculados.map(c => c.curso_id))]
           const cursos = await Promise.all(cursoIds.map(id => cursosService.getById(id)))
           const cursoMap = Object.fromEntries(
             cursos.filter(Boolean).map(c => [c!.id, c!])
           )
 
           const map: Record<string, CertificadoPDFData> = {}
-          for (const cert of certs) {
+          for (const cert of certsVinculados) {
             const curso = cursoMap[cert.curso_id]
             map[cert.id] = {
               nome_aluno: profile?.nome ?? '',

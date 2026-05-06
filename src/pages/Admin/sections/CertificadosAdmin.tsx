@@ -23,19 +23,9 @@ const emptyForm: FormPresencial = {
   nr_referencia: '', carga_horaria: '', instrutor: '', validade_meses: '12',
 }
 
-function gerarSerie(): string {
-  const ano = new Date().getFullYear()
-  const num = String(Math.floor(Math.random() * 999999)).padStart(6, '0')
-  return `PRES-${ano}-${num}`
-}
-
-function calcularValidade(meses: string): string | null {
-  const n = parseInt(meses)
-  if (!n) return null
-  const d = new Date()
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString()
-}
+// Serial e data_validade são gerados server-side pela RPC emitir_certificado_presencial
+// (sequence única + validação de meses), eliminando colisão de Math.random e
+// validades negativas. Ver migration 20260506_002_rpc_emitir_certificado_presencial.
 
 export function CertificadosAdmin() {
   const { showToast } = useToast()
@@ -73,6 +63,8 @@ export function CertificadosAdmin() {
   const setField = (f: keyof FormPresencial) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [f]: e.target.value }))
 
+  const [emitindoPresencial, setEmitindoPresencial] = useState(false)
+
   function abrirModal() {
     setForm(emptyForm)
     setPdfData(null)
@@ -84,22 +76,49 @@ export function CertificadosAdmin() {
     setPdfData(null)
   }
 
-  function gerarPDF() {
+  // Persiste o certificado via RPC e, com a resposta server-side (serial único +
+  // data_validade calculada), monta o pdfData para renderização local do PDF.
+  async function gerarPDF() {
     if (!form.nome_aluno.trim()) { showToast('Nome do aluno obrigatório.', 'error'); return }
     if (!form.nome_curso.trim()) { showToast('Nome do curso obrigatório.', 'error'); return }
     if (!form.instrutor.trim()) { showToast('Nome do instrutor obrigatório.', 'error'); return }
-    setPdfData({
-      nome_aluno: form.nome_aluno.trim(),
-      cpf_aluno: form.cpf_aluno.trim() || null,
-      nome_curso: form.nome_curso.trim(),
-      nr_referencia: form.nr_referencia.trim() || null,
-      carga_horaria: form.carga_horaria ? parseInt(form.carga_horaria) : null,
-      instrutor: form.instrutor.trim(),
-      data_emissao: new Date().toISOString(),
-      data_validade: calcularValidade(form.validade_meses),
-      numero_serie: gerarSerie(),
-      tipo: 'presencial',
-    })
+
+    const validadeMesesNum = form.validade_meses ? parseInt(form.validade_meses) : null
+    const cargaHorariaNum  = form.carga_horaria  ? parseInt(form.carga_horaria)  : null
+
+    setEmitindoPresencial(true)
+    try {
+      const cert = await certificadosService.emitirCertificadoPresencial({
+        nome_aluno:     form.nome_aluno.trim(),
+        nome_curso:     form.nome_curso.trim(),
+        instrutor:      form.instrutor.trim(),
+        cpf_aluno:      form.cpf_aluno.trim() || null,
+        nr_referencia:  form.nr_referencia.trim() || null,
+        carga_horaria:  cargaHorariaNum,
+        validade_meses: validadeMesesNum,
+      })
+
+      setPdfData({
+        nome_aluno:     cert.nome_aluno_avulso     ?? form.nome_aluno.trim(),
+        cpf_aluno:      cert.cpf_aluno_avulso      ?? null,
+        nome_curso:     cert.nome_curso_avulso     ?? form.nome_curso.trim(),
+        nr_referencia:  cert.nr_referencia_avulso  ?? null,
+        carga_horaria:  cert.carga_horaria_avulso  ?? null,
+        instrutor:      cert.instrutor_avulso      ?? form.instrutor.trim(),
+        data_emissao:   cert.data_emissao,
+        data_validade:  cert.data_validade ?? null,
+        numero_serie:   cert.numero_serie,
+        tipo:           'presencial',
+      })
+
+      showToast('Certificado presencial registrado!', 'success')
+      // Atualiza a tabela em background — o admin pode continuar baixando o PDF.
+      load()
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Erro ao emitir certificado.', 'error')
+    } finally {
+      setEmitindoPresencial(false)
+    }
   }
 
   const load = async () => {
@@ -120,6 +139,10 @@ export function CertificadosAdmin() {
   useEffect(() => { load() }, [])
 
   const handleEmitirManual = async (cert: CertificadoAdmin) => {
+    if (!cert.aluno_id || !cert.curso_id) {
+      showToast('Certificado presencial não pode ser reemitido por aqui.', 'error')
+      return
+    }
     setEmitindo(cert.id)
     try {
       await certificadosService.emitirCertificado(cert.aluno_id, cert.curso_id)
@@ -200,46 +223,58 @@ export function CertificadosAdmin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-steel-100">
-                {certificados.map(cert => (
-                  <tr key={cert.id} className="hover:bg-steel-50/50">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-steel-800">{cert.aluno?.nome ?? '—'}</p>
-                      <p className="text-xs text-steel-400">{cert.aluno?.cpf ?? ''}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-steel-700">{cert.curso?.titulo ?? '—'}</p>
-                      {cert.curso?.nr_referencia && (
-                        <p className="text-xs text-orange-500 font-medium">{cert.curso.nr_referencia}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <code className="text-xs bg-steel-100 px-2 py-0.5 rounded font-mono text-steel-600">
-                        {cert.numero_serie}
-                      </code>
-                    </td>
-                    <td className="px-4 py-3 text-steel-600 whitespace-nowrap">{formatDate(cert.data_emissao)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {cert.data_validade ? (
-                        <span className={`text-xs font-medium ${
-                          new Date(cert.data_validade) < new Date()
-                            ? 'text-red-600'
-                            : 'text-green-600'
-                        }`}>
-                          {formatDate(cert.data_validade)}
+                {certificados.map(cert => {
+                  // Presencial: dados vivem nos campos *_avulso (snapshot no momento da emissão)
+                  // Vinculado: dados vêm dos joins aluno/curso
+                  const ehPresencial = cert.tipo === 'presencial'
+                  const nomeAluno   = ehPresencial ? cert.nome_aluno_avulso    : cert.aluno?.nome
+                  const cpfAluno    = ehPresencial ? cert.cpf_aluno_avulso     : cert.aluno?.cpf
+                  const nomeCurso   = ehPresencial ? cert.nome_curso_avulso    : cert.curso?.titulo
+                  const nrRef       = ehPresencial ? cert.nr_referencia_avulso : cert.curso?.nr_referencia
+
+                  const tipoBadge = {
+                    completo:   { label: 'Completo',   classes: 'bg-navy-500/10 text-navy-500' },
+                    teorico:    { label: 'Teórico',    classes: 'bg-blue-50 text-blue-600' },
+                    presencial: { label: 'Presencial', classes: 'bg-purple-50 text-purple-700' },
+                  }[cert.tipo] ?? { label: cert.tipo, classes: 'bg-steel-100 text-steel-600' }
+
+                  return (
+                    <tr key={cert.id} className="hover:bg-steel-50/50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-steel-800">{nomeAluno ?? '—'}</p>
+                        <p className="text-xs text-steel-400">{cpfAluno ?? ''}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-steel-700">{nomeCurso ?? '—'}</p>
+                        {nrRef && (
+                          <p className="text-xs text-orange-500 font-medium">{nrRef}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-xs bg-steel-100 px-2 py-0.5 rounded font-mono text-steel-600">
+                          {cert.numero_serie}
+                        </code>
+                      </td>
+                      <td className="px-4 py-3 text-steel-600 whitespace-nowrap">{formatDate(cert.data_emissao)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {cert.data_validade ? (
+                          <span className={`text-xs font-medium ${
+                            new Date(cert.data_validade) < new Date()
+                              ? 'text-red-600'
+                              : 'text-green-600'
+                          }`}>
+                            {formatDate(cert.data_validade)}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoBadge.classes}`}>
+                          {tipoBadge.label}
                         </span>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        cert.tipo === 'completo'
-                          ? 'bg-navy-500/10 text-navy-500'
-                          : 'bg-blue-50 text-blue-600'
-                      }`}>
-                        {cert.tipo === 'completo' ? 'Completo' : 'Teórico'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -330,7 +365,7 @@ export function CertificadosAdmin() {
               Cancelar
             </Button>
             {!pdfData ? (
-              <Button onClick={gerarPDF}>
+              <Button onClick={gerarPDF} loading={emitindoPresencial}>
                 Gerar Certificado
               </Button>
             ) : preparando ? (

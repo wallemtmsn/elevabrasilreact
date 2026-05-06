@@ -43,6 +43,30 @@ export const certificadosService = {
     return data as Certificado
   },
 
+  // Chama RPC server-side: emite certificado presencial (sem matrícula vinculada).
+  // Serial gerado via certificados_seq — sem colisão de Math.random().
+  async emitirCertificadoPresencial(payload: {
+    nome_aluno: string
+    nome_curso: string
+    instrutor: string
+    validade_meses?: number | null
+    cpf_aluno?: string | null
+    nr_referencia?: string | null
+    carga_horaria?: number | null
+  }): Promise<Certificado> {
+    const { data, error } = await supabase.rpc('emitir_certificado_presencial', {
+      p_nome_aluno:     payload.nome_aluno,
+      p_nome_curso:     payload.nome_curso,
+      p_instrutor:      payload.instrutor,
+      p_validade_meses: payload.validade_meses ?? null,
+      p_cpf_aluno:      payload.cpf_aluno ?? null,
+      p_nr_referencia:  payload.nr_referencia ?? null,
+      p_carga_horaria:  payload.carga_horaria ?? null,
+    })
+    if (error) throw new Error(error.message)
+    return data as Certificado
+  },
+
   // Chama RPC que verifica teórico e, se elegível, emite certificado automaticamente
   async verificarTeoricoEEmitir(
     alunoId: string,
