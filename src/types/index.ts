@@ -47,14 +47,23 @@ export interface Matricula {
 
 export interface Certificado {
   id: string
-  matricula_id: string
-  aluno_id: string
-  curso_id: string
+  // FKs nulas em certificados presenciais (sem matrícula vinculada)
+  matricula_id: string | null
+  aluno_id: string | null
+  curso_id: string | null
   numero_serie: string
   data_emissao: string
   data_validade?: string | null
-  tipo: 'teorico' | 'completo'
+  tipo: 'teorico' | 'completo' | 'presencial'
   criado_em: string
+  // Snapshot de dados quando tipo='presencial'
+  nome_aluno_avulso?: string | null
+  cpf_aluno_avulso?: string | null
+  nome_curso_avulso?: string | null
+  nr_referencia_avulso?: string | null
+  carga_horaria_avulso?: number | null
+  instrutor_avulso?: string | null
+  emitido_por?: string | null
 }
 
 export interface CertificadoAdmin extends Certificado {
