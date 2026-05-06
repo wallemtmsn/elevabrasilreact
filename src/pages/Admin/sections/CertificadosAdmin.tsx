@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PDFDownloadLink } from '@react-pdf/renderer'
+import { pdf } from '@react-pdf/renderer'
 import { certificadosService } from '@/services/certificadosService'
 import { useToast } from '@/contexts/ToastContext'
 import { Button, Input, Modal } from '@/components/ui'
@@ -48,6 +48,7 @@ export function CertificadosAdmin() {
   const [modalPresencial, setModalPresencial] = useState(false)
   const [form, setForm] = useState<FormPresencial>(emptyForm)
   const [pdfData, setPdfData] = useState<CertificadoPDFData | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   const setField = (f: keyof FormPresencial) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [f]: e.target.value }))
@@ -74,6 +75,26 @@ export function CertificadosAdmin() {
       numero_serie: gerarSerie(),
       tipo: 'presencial',
     })
+  }
+
+  async function handleDownloadPDF() {
+    if (!pdfData) return
+    setDownloading(true)
+    try {
+      const blob = await pdf(<CertificadoPDF dados={pdfData} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `certificado-${pdfData.numero_serie}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      showToast('Erro ao gerar PDF. Tente novamente.', 'error')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const load = async () => {
@@ -308,28 +329,14 @@ export function CertificadosAdmin() {
                 Gerar Certificado
               </Button>
             ) : (
-              <PDFDownloadLink
-                document={<CertificadoPDF dados={pdfData} />}
-                fileName={`certificado-${pdfData.numero_serie}.pdf`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors"
-              >
-                {({ loading: pdfLoading }) => pdfLoading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Gerando PDF...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Baixar PDF
-                  </>
+              <Button loading={downloading} onClick={handleDownloadPDF}>
+                {!downloading && (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
                 )}
-              </PDFDownloadLink>
+                {downloading ? 'Gerando PDF...' : 'Baixar PDF'}
+              </Button>
             )}
           </div>
         </div>

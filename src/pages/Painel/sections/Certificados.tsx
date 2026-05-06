@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PDFDownloadLink } from '@react-pdf/renderer'
+import { pdf } from '@react-pdf/renderer'
 import { useAuth } from '@/contexts/AuthContext'
 import { certificadosService } from '@/services/certificadosService'
 import { cursosService } from '@/services/cursosService'
@@ -18,6 +18,54 @@ function formatarData(iso: string): string {
 function isVencido(data?: string | null): boolean {
   if (!data) return false
   return new Date(data) < new Date()
+}
+
+function DownloadButton({ pdfData, numeroSerie }: { pdfData: CertificadoPDFData; numeroSerie: string }) {
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    setDownloading(true)
+    try {
+      const blob = await pdf(<CertificadoPDF dados={pdfData} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `certificado-${numeroSerie}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Erro ao gerar PDF. Tente novamente.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={downloading}
+      className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {downloading ? (
+        <>
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Gerando PDF...
+        </>
+      ) : (
+        <>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Baixar Certificado PDF
+        </>
+      )}
+    </button>
+  )
 }
 
 export function Certificados() {
@@ -105,7 +153,6 @@ export function Certificados() {
                 key={cert.id}
                 className="bg-white rounded-2xl border border-steel-200 p-5 flex flex-col gap-3"
               >
-                {/* Header do card */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-10 h-10 bg-navy-500/10 rounded-xl flex items-center justify-center flex-shrink-0">
                     <svg className="w-5 h-5 text-navy-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -128,7 +175,6 @@ export function Certificados() {
                   </div>
                 </div>
 
-                {/* Nome do curso */}
                 <div>
                   <p className="font-semibold text-steel-800 leading-snug">
                     {pdfData?.nome_curso ?? '—'}
@@ -138,12 +184,10 @@ export function Certificados() {
                   )}
                 </div>
 
-                {/* Nº de série */}
                 <code className="text-xs bg-steel-100 px-3 py-1.5 rounded-lg font-mono text-steel-600 self-start">
                   {cert.numero_serie}
                 </code>
 
-                {/* Datas */}
                 <div className="flex flex-col gap-1 text-xs text-steel-500">
                   <span>Emitido em {formatarData(cert.data_emissao)}</span>
                   {cert.data_validade && (
@@ -153,30 +197,8 @@ export function Certificados() {
                   )}
                 </div>
 
-                {/* Botão de download */}
                 {pdfData ? (
-                  <PDFDownloadLink
-                    document={<CertificadoPDF dados={pdfData} />}
-                    fileName={`certificado-${cert.numero_serie}.pdf`}
-                    className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors"
-                  >
-                    {({ loading: pdfLoading }) => pdfLoading ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Gerando PDF...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Baixar Certificado PDF
-                      </>
-                    )}
-                  </PDFDownloadLink>
+                  <DownloadButton pdfData={pdfData} numeroSerie={cert.numero_serie} />
                 ) : (
                   <div className="h-10 bg-steel-100 rounded-xl animate-pulse mt-auto" />
                 )}
