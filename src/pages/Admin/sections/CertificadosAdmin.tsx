@@ -7,6 +7,7 @@ import { formatCPF, formatDate } from '@/utils/formatters'
 import { isValidCPF } from '@/utils/validators'
 import { CertificadoPDF } from '@/components/certificados/CertificadoPDF'
 import type { CertificadoPDFData } from '@/components/certificados/CertificadoPDF'
+import { CertificadoDownloadButton } from '@/components/certificados/CertificadoDownloadButton'
 import type { CertificadoAdmin, MetricasCertificados } from '@/types'
 
 type FormPresencial = {
@@ -247,6 +248,7 @@ export function CertificadosAdmin() {
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide">Emissão</th>
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide">Validade</th>
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide">Tipo</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide text-center">PDF</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-steel-100">
@@ -258,12 +260,27 @@ export function CertificadosAdmin() {
                   const cpfAluno    = ehPresencial ? cert.cpf_aluno_avulso     : cert.aluno?.cpf
                   const nomeCurso   = ehPresencial ? cert.nome_curso_avulso    : cert.curso?.titulo
                   const nrRef       = ehPresencial ? cert.nr_referencia_avulso : cert.curso?.nr_referencia
+                  const cargaH      = ehPresencial ? cert.carga_horaria_avulso : cert.curso?.carga_horaria
 
                   const tipoBadge = {
                     completo:   { label: 'Completo',   classes: 'bg-navy-500/10 text-navy-500' },
                     teorico:    { label: 'Teórico',    classes: 'bg-blue-50 text-blue-600' },
                     presencial: { label: 'Presencial', classes: 'bg-purple-50 text-purple-700' },
                   }[cert.tipo] ?? { label: cert.tipo, classes: 'bg-steel-100 text-steel-600' }
+
+                  const pdfData: CertificadoPDFData = {
+                    nome_aluno:    nomeAluno   ?? '—',
+                    cpf_aluno:     cpfAluno    ?? null,
+                    foto_url:      ehPresencial ? null : (cert.aluno?.foto_url ?? null),
+                    nome_curso:    nomeCurso   ?? '—',
+                    nr_referencia: nrRef       ?? null,
+                    carga_horaria: cargaH      ?? null,
+                    data_emissao:  cert.data_emissao,
+                    data_validade: cert.data_validade ?? null,
+                    numero_serie:  cert.numero_serie,
+                    tipo:          cert.tipo,
+                    instrutor:     ehPresencial ? cert.instrutor_avulso : null,
+                  }
 
                   return (
                     <tr key={cert.id} className="hover:bg-steel-50/50">
@@ -298,6 +315,9 @@ export function CertificadosAdmin() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoBadge.classes}`}>
                           {tipoBadge.label}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <CertificadoDownloadButton pdfData={pdfData} />
                       </td>
                     </tr>
                   )

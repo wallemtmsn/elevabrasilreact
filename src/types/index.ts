@@ -67,7 +67,7 @@ export interface Certificado {
 }
 
 export interface CertificadoAdmin extends Certificado {
-  aluno?: { nome: string; cpf: string } | null
+  aluno?: { nome: string; cpf: string; foto_url?: string | null } | null
   curso?: { titulo: string; nr_referencia?: string | null; carga_horaria?: number | null } | null
 }
 

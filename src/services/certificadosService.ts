@@ -25,7 +25,7 @@ export const certificadosService = {
       .from('certificados')
       .select(`
         *,
-        aluno:profiles!aluno_id(nome, cpf),
+        aluno:profiles!aluno_id(nome, cpf, foto_url),
         curso:cursos!curso_id(titulo, nr_referencia, carga_horaria)
       `)
       .order('data_emissao', { ascending: false })
