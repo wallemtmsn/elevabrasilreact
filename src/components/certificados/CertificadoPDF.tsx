@@ -189,7 +189,7 @@ export function CertificadoPDF({ dados }: { dados: CertificadoPDFData }) {
           {/* Cabeçalho: logo + foto */}
           <View style={styles.headerRow}>
             <Image
-              src="/assets/img/logo.jpg"
+              src={`${typeof window !== 'undefined' ? window.location.origin : ''}/assets/img/logo.jpg`}
               style={styles.logo}
             />
             {dados.foto_url && (

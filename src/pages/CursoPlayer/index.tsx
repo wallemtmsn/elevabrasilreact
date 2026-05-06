@@ -6,6 +6,8 @@ import { cursosService } from '@/services/cursosService'
 import { modulosService } from '@/services/modulosService'
 import { perguntasService } from '@/services/perguntasService'
 import { provasService } from '@/services/provasService'
+import { certificadosService } from '@/services/certificadosService'
+import { useToast } from '@/contexts/ToastContext'
 import { ProvaModal } from './ProvaModal'
 import type { Curso, Modulo, Aula, Pergunta, Prova } from '@/types'
 
@@ -100,6 +102,7 @@ export function CursoPlayerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
+  const { showToast } = useToast()
 
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<Modulo[]>([])
@@ -327,6 +330,16 @@ export function CursoPlayerPage() {
               return // não avança aula automaticamente
             }
           }
+        }
+
+        // Verifica progresso teórico e emite certificado se elegível
+        if (id && curso) {
+          try {
+            const resultado = await certificadosService.verificarTeoricoEEmitir(user.id, id, curso.exige_pratico)
+            if (resultado.certificado) {
+              showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
+            }
+          } catch { /* silent — não bloqueia o fluxo */ }
         }
 
         // auto-advance to next lesson
@@ -845,6 +858,15 @@ export function CursoPlayerPage() {
             setModulosAprovados(prev => new Set(prev).add(
               provaAtiva.prova.modulo_id
             ))
+            if (id && curso) {
+              certificadosService.verificarTeoricoEEmitir(user!.id, id, curso.exige_pratico)
+                .then(resultado => {
+                  if (resultado.certificado) {
+                    showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
+                  }
+                })
+                .catch(() => { /* silent */ })
+            }
           }}
           onFechar={() => {
             setProvaAtiva(null)
