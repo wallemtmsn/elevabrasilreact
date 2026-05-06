@@ -3,7 +3,8 @@ import { pdf } from '@react-pdf/renderer'
 import { certificadosService } from '@/services/certificadosService'
 import { useToast } from '@/contexts/ToastContext'
 import { Button, Input, Modal } from '@/components/ui'
-import { formatDate } from '@/utils/formatters'
+import { formatCPF, formatDate } from '@/utils/formatters'
+import { isValidCPF } from '@/utils/validators'
 import { CertificadoPDF } from '@/components/certificados/CertificadoPDF'
 import type { CertificadoPDFData } from '@/components/certificados/CertificadoPDF'
 import type { CertificadoAdmin, MetricasCertificados } from '@/types'
@@ -63,6 +64,10 @@ export function CertificadosAdmin() {
   const setField = (f: keyof FormPresencial) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [f]: e.target.value }))
 
+  // Aplica máscara 000.000.000-00 conforme o admin digita
+  const setCpfField = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, cpf_aluno: formatCPF(e.target.value.replace(/\D/g, '').slice(0, 11)) }))
+
   const [emitindoPresencial, setEmitindoPresencial] = useState(false)
 
   function abrirModal() {
@@ -92,6 +97,12 @@ export function CertificadosAdmin() {
     if (!form.nome_aluno.trim()) { showToast('Nome do aluno obrigatório.', 'error'); return }
     if (!form.nome_curso.trim()) { showToast('Nome do curso obrigatório.', 'error'); return }
     if (!form.instrutor.trim()) { showToast('Nome do instrutor obrigatório.', 'error'); return }
+
+    // CPF é opcional, mas se preenchido precisa ser válido (algoritmo da Receita)
+    const cpfTrim = form.cpf_aluno.trim()
+    if (cpfTrim && !isValidCPF(cpfTrim)) {
+      showToast('CPF do aluno inválido.', 'error'); return
+    }
 
     const validadeMesesNum = parseInteiroPositivoOpcional(form.validade_meses)
     if (validadeMesesNum === 'invalido') {
@@ -334,9 +345,10 @@ export function CertificadosAdmin() {
             <Input
               label="CPF do aluno"
               value={form.cpf_aluno}
-              onChange={setField('cpf_aluno')}
+              onChange={setCpfField}
               placeholder="000.000.000-00"
-              helpText="Opcional"
+              helpText="Opcional, mas se preenchido precisa ser válido"
+              inputMode="numeric"
             />
           </div>
           <Input

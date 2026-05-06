@@ -33,7 +33,7 @@ export function RegisterModal({ open, onClose, onSwitchToLogin }: RegisterModalP
     const e: Partial<typeof form> = {}
     if (!form.nome.trim()) e.nome = 'Nome obrigatório.'
     if (!isValidEmail(form.email)) e.email = 'E-mail inválido.'
-    if (!isValidCPF(form.cpf)) e.cpf = 'CPF deve ter 11 dígitos.'
+    if (!isValidCPF(form.cpf)) e.cpf = 'CPF inválido.'
     if (!isValidPhone(form.telefone)) e.telefone = 'Telefone inválido.'
     if (!isStrongPassword(form.password)) e.password = 'Mínimo 6 caracteres.'
     if (form.password !== form.confirm) e.confirm = 'As senhas não coincidem.'
