@@ -117,7 +117,7 @@ export function AdminPage() {
       ].join(' ')}>
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-8 w-auto" />
+            <img src="/assets/img/logo.jpg" alt="Eleva Brasil" className="h-8 w-auto" />
             <span className="text-xs bg-brand-red px-2 py-0.5 rounded-full font-medium">Admin</span>
           </div>
         </div>
