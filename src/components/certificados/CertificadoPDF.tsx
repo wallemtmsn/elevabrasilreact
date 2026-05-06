@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Font,
 } from '@react-pdf/renderer'
+import { LOGO_BASE64 } from './logoBase64'
 
 // Dados necessários para renderizar o certificado
 export interface CertificadoPDFData {
@@ -190,7 +191,7 @@ export function CertificadoPDF({ dados }: { dados: CertificadoPDFData }) {
           {/* Cabeçalho: logo + foto */}
           <View style={styles.headerRow}>
             <Image
-              src={`${typeof window !== 'undefined' ? window.location.origin : ''}/assets/img/logo.jpg`}
+              src={LOGO_BASE64}
               style={styles.logo}
             />
             {dados.foto_url && (
