@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { profileService } from '@/services/profileService'
 import { cursosService } from '@/services/cursosService'
+import { certificadosService } from '@/services/certificadosService'
 import { formatDate } from '@/utils/formatters'
 import type { ProfileWithEmail } from '@/types'
 
 export function Dashboard() {
-  const [stats, setStats] = useState({ total: 0, ultimos7: 0, ultimos30: 0, cursos: 0 })
+  const [stats, setStats] = useState({ total: 0, ultimos7: 0, ultimos30: 0, cursos: 0, certificados: 0 })
   const [recentes, setRecentes] = useState<ProfileWithEmail[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
-      const [profiles, cursosCount] = await Promise.all([
+      const [profiles, cursosCount, metricas] = await Promise.all([
         profileService.getAllWithEmail(),
         cursosService.countAtivos(),
+        certificadosService.getMetricas().catch(() => ({ total: 0, hoje: 0, esta_semana: 0, este_mes: 0 })),
       ])
       const now = Date.now()
       const d7 = now - 7 * 86400000
@@ -23,6 +25,7 @@ export function Dashboard() {
         ultimos7: profiles.filter(p => new Date(p.criado_em).getTime() > d7).length,
         ultimos30: profiles.filter(p => new Date(p.criado_em).getTime() > d30).length,
         cursos: cursosCount,
+        certificados: metricas.total,
       })
       setRecentes(profiles.slice(0, 5))
       setLoading(false)
@@ -45,13 +48,14 @@ export function Dashboard() {
     { label: 'Novos (7 dias)', value: stats.ultimos7, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Novos (30 dias)', value: stats.ultimos30, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Cursos ativos', value: stats.cursos, color: 'text-brand-red', bg: 'bg-brand-red/10' },
+    { label: 'Certificados emitidos', value: stats.certificados, color: 'text-amber-600', bg: 'bg-amber-50' },
   ]
 
   return (
     <div className="flex flex-col gap-6">
       <h2 className="font-montserrat text-xl font-bold text-steel-800">Dashboard</h2>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {cards.map(card => (
           <div key={card.label} className="bg-white rounded-2xl border border-steel-200 p-5">
             <div className={`w-10 h-10 ${card.bg} rounded-xl flex items-center justify-center mb-3`}>

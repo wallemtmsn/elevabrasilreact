@@ -10,8 +10,11 @@ import { ConteudoAdmin } from './sections/ConteudoAdmin'
 import { MatriculasAdmin } from './sections/MatriculasAdmin'
 import { PerguntasAdmin } from './sections/PerguntasAdmin'
 import { ProvasAdmin } from './sections/ProvasAdmin'
+import { CertificadosAdmin } from './sections/CertificadosAdmin'
+import { PendentesPratico } from './sections/PendentesPratico'
+import { TeoricoConcluido } from './sections/TeoricoConcluido'
 
-type Section = 'dashboard' | 'alunos' | 'cursos' | 'conteudo' | 'matriculas' | 'perguntas' | 'provas'
+type Section = 'dashboard' | 'alunos' | 'cursos' | 'conteudo' | 'matriculas' | 'perguntas' | 'provas' | 'certificados' | 'pendentes_pratico' | 'teorico_concluido'
 
 const navItems: { id: Section; label: string; icon: React.ReactNode }[] = [
   {
@@ -49,6 +52,21 @@ const navItems: { id: Section; label: string; icon: React.ReactNode }[] = [
     label: 'Avaliações',
     icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
   },
+  {
+    id: 'certificados',
+    label: 'Certificados',
+    icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>,
+  },
+  {
+    id: 'pendentes_pratico',
+    label: 'Pendentes Prático',
+    icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  },
+  {
+    id: 'teorico_concluido',
+    label: 'Teórico Concluído',
+    icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>,
+  },
 ]
 
 export function AdminPage() {
@@ -79,6 +97,9 @@ export function AdminPage() {
       case 'matriculas': return <MatriculasAdmin />
       case 'perguntas': return <PerguntasAdmin />
       case 'provas': return <ProvasAdmin />
+      case 'certificados': return <CertificadosAdmin />
+      case 'pendentes_pratico': return <PendentesPratico />
+      case 'teorico_concluido': return <TeoricoConcluido />
     }
   }
 
