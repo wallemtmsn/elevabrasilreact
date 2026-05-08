@@ -56,7 +56,11 @@ export function CertificadosAdmin() {
         const url = URL.createObjectURL(blob)
         setBlobUrl(url)
       })
-      .catch(() => showToast('Erro ao preparar PDF. Tente novamente.', 'error'))
+      .catch(err => {
+        console.error('Erro ao preparar PDF do certificado presencial:', err)
+        const msg = err instanceof Error ? err.message : 'falha desconhecida'
+        showToast(`Erro ao preparar PDF: ${msg}`, 'error')
+      })
       .finally(() => setPreparando(false))
 
     return () => setBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
