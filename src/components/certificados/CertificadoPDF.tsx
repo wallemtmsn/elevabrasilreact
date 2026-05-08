@@ -5,7 +5,6 @@ import {
   View,
   Image,
   StyleSheet,
-  Font,
 } from '@react-pdf/renderer'
 import { LOGO_BASE64 } from './logoBase64'
 
@@ -23,11 +22,6 @@ export interface CertificadoPDFData {
   tipo: 'teorico' | 'completo' | 'presencial'
   instrutor?: string | null
 }
-
-Font.register({
-  family: 'Georgia',
-  src: 'https://fonts.gstatic.com/s/notoserifsc/v22/H4chBXePl9DZ0Xe7gG9cyOj7mgq0SBnQ9T.woff2',
-})
 
 const styles = StyleSheet.create({
   page: {
