@@ -32,7 +32,9 @@ function DownloadButton({ pdfData, numeroSerie }: { pdfData: CertificadoPDFData;
         url = URL.createObjectURL(blob)
         setBlobUrl(url)
       })
-      .catch(() => {})
+      .catch(err => {
+        console.error('Erro ao preparar PDF do certificado:', err)
+      })
       .finally(() => setPreparando(false))
     return () => { if (url) URL.revokeObjectURL(url) }
   }, [pdfData])
