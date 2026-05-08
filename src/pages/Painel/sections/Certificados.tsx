@@ -94,16 +94,21 @@ export function Certificados() {
           for (const cert of certsVinculados) {
             const curso = cursoMap[cert.curso_id]
             map[cert.id] = {
-              nome_aluno: profile?.nome ?? '',
-              cpf_aluno: profile?.cpf ?? '',
-              foto_url: profile?.foto_url ?? null,
-              nome_curso: curso?.titulo ?? '',
+              nome_aluno:    profile?.nome ?? '',
+              cpf_aluno:     profile?.cpf ?? '',
+              foto_url:      profile?.foto_url ?? null,
+              nome_curso:    curso?.titulo ?? '',
               nr_referencia: curso?.nr_referencia ?? null,
               carga_horaria: curso?.carga_horaria ?? null,
-              data_emissao: cert.data_emissao,
+              data_emissao:  cert.data_emissao,
               data_validade: cert.data_validade ?? null,
-              numero_serie: cert.numero_serie,
-              tipo: cert.tipo,
+              numero_serie:  cert.numero_serie,
+              tipo:          cert.tipo,
+              // Vinculados não têm instrutor próprio — usa padrão fixo da empresa
+              instrutor:           'Equipe Eleva Brasil Treinamentos',
+              documento_instrutor: 'Responsável Técnico',
+              // Conteúdo programático cai do curso (se cadastrado)
+              conteudo_programatico: curso?.conteudo_programatico ?? null,
             }
           }
           setPdfDataMap(map)

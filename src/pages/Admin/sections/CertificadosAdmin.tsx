@@ -17,12 +17,18 @@ type FormPresencial = {
   nr_referencia: string
   carga_horaria: string
   instrutor: string
+  documento_instrutor: string
   validade_meses: string
+  data_inicio: string
+  data_fim: string
+  conteudo_programatico: string
 }
 
 const emptyForm: FormPresencial = {
   nome_aluno: '', cpf_aluno: '', nome_curso: '',
-  nr_referencia: '', carga_horaria: '', instrutor: '', validade_meses: '12',
+  nr_referencia: '', carga_horaria: '', instrutor: '',
+  documento_instrutor: '', validade_meses: '12',
+  data_inicio: '', data_fim: '', conteudo_programatico: '',
 }
 
 // Serial e data_validade são gerados server-side pela RPC emitir_certificado_presencial
@@ -118,29 +124,47 @@ export function CertificadosAdmin() {
       showToast('Carga horária deve ser um inteiro positivo.', 'error'); return
     }
 
+    // Validação extra: se um dos extremos do período for preenchido, exige o outro também
+    const inicio = form.data_inicio.trim()
+    const fim    = form.data_fim.trim()
+    if ((inicio && !fim) || (!inicio && fim)) {
+      showToast('Preencha as duas datas do período (início e fim) ou deixe ambas vazias.', 'error'); return
+    }
+    if (inicio && fim && inicio > fim) {
+      showToast('Data fim deve ser maior ou igual à data início.', 'error'); return
+    }
+
     setEmitindoPresencial(true)
     try {
       const cert = await certificadosService.emitirCertificadoPresencial({
-        nome_aluno:     form.nome_aluno.trim(),
-        nome_curso:     form.nome_curso.trim(),
-        instrutor:      form.instrutor.trim(),
-        cpf_aluno:      form.cpf_aluno.trim() || null,
-        nr_referencia:  form.nr_referencia.trim() || null,
-        carga_horaria:  cargaHorariaNum,
-        validade_meses: validadeMesesNum,
+        nome_aluno:           form.nome_aluno.trim(),
+        nome_curso:           form.nome_curso.trim(),
+        instrutor:            form.instrutor.trim(),
+        cpf_aluno:            form.cpf_aluno.trim() || null,
+        nr_referencia:        form.nr_referencia.trim() || null,
+        carga_horaria:        cargaHorariaNum,
+        validade_meses:       validadeMesesNum,
+        documento_instrutor:  form.documento_instrutor.trim() || null,
+        data_inicio:          inicio || null,
+        data_fim:             fim    || null,
+        conteudo_programatico: form.conteudo_programatico.trim() || null,
       })
 
       setPdfData({
-        nome_aluno:     cert.nome_aluno_avulso     ?? form.nome_aluno.trim(),
-        cpf_aluno:      cert.cpf_aluno_avulso      ?? null,
-        nome_curso:     cert.nome_curso_avulso     ?? form.nome_curso.trim(),
-        nr_referencia:  cert.nr_referencia_avulso  ?? null,
-        carga_horaria:  cert.carga_horaria_avulso  ?? null,
-        instrutor:      cert.instrutor_avulso      ?? form.instrutor.trim(),
-        data_emissao:   cert.data_emissao,
-        data_validade:  cert.data_validade ?? null,
-        numero_serie:   cert.numero_serie,
-        tipo:           'presencial',
+        nome_aluno:           cert.nome_aluno_avulso           ?? form.nome_aluno.trim(),
+        cpf_aluno:            cert.cpf_aluno_avulso            ?? null,
+        nome_curso:           cert.nome_curso_avulso           ?? form.nome_curso.trim(),
+        nr_referencia:        cert.nr_referencia_avulso        ?? null,
+        carga_horaria:        cert.carga_horaria_avulso        ?? null,
+        instrutor:            cert.instrutor_avulso            ?? form.instrutor.trim(),
+        documento_instrutor:  cert.documento_instrutor_avulso  ?? null,
+        data_inicio:          cert.data_inicio_avulso          ?? null,
+        data_fim:             cert.data_fim_avulso             ?? null,
+        conteudo_programatico: cert.conteudo_programatico_avulso ?? null,
+        data_emissao:         cert.data_emissao,
+        data_validade:        cert.data_validade ?? null,
+        numero_serie:         cert.numero_serie,
+        tipo:                 'presencial',
       })
 
       showToast('Certificado presencial registrado!', 'success')
@@ -283,7 +307,18 @@ export function CertificadosAdmin() {
                     data_validade: cert.data_validade ?? null,
                     numero_serie:  cert.numero_serie,
                     tipo:          cert.tipo,
-                    instrutor:     ehPresencial ? cert.instrutor_avulso : null,
+                    // Vinculados sem instrutor próprio usam padrão fixo da empresa
+                    instrutor:     ehPresencial
+                      ? (cert.instrutor_avulso ?? 'Equipe Eleva Brasil')
+                      : 'Equipe Eleva Brasil Treinamentos',
+                    documento_instrutor: ehPresencial
+                      ? (cert.documento_instrutor_avulso ?? null)
+                      : 'Responsável Técnico',
+                    data_inicio:   ehPresencial ? cert.data_inicio_avulso ?? null : null,
+                    data_fim:      ehPresencial ? cert.data_fim_avulso ?? null    : null,
+                    conteudo_programatico: ehPresencial
+                      ? cert.conteudo_programatico_avulso ?? null
+                      : cert.curso?.conteudo_programatico ?? null,
                   }
 
                   return (
@@ -405,12 +440,53 @@ export function CertificadosAdmin() {
               placeholder="12"
             />
           </div>
-          <Input
-            label="Nome do instrutor *"
-            value={form.instrutor}
-            onChange={setField('instrutor')}
-            placeholder="Aparece na linha de assinatura do certificado"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nome do instrutor *"
+              value={form.instrutor}
+              onChange={setField('instrutor')}
+              placeholder="Renderizado em fonte caligráfica na assinatura"
+            />
+            <Input
+              label="Documento / cargo do instrutor"
+              value={form.documento_instrutor}
+              onChange={setField('documento_instrutor')}
+              placeholder="Ex: Tec. Em Segurança do Trabalho"
+              helpText="Aparece abaixo do nome na assinatura"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Data início (treinamento)"
+              type="date"
+              value={form.data_inicio}
+              onChange={setField('data_inicio')}
+              helpText="Opcional — se preenchida, exige data fim também"
+            />
+            <Input
+              label="Data fim (treinamento)"
+              type="date"
+              value={form.data_fim}
+              onChange={setField('data_fim')}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-steel-700">
+              Conteúdo programático (verso do certificado)
+            </label>
+            <textarea
+              value={form.conteudo_programatico}
+              onChange={e => setForm(prev => ({ ...prev, conteudo_programatico: e.target.value }))}
+              placeholder={'Uma linha por tópico, ex:\nConceito de acidentes de trabalho\nMovimentação de cargas em ambiente portuário\nPrevenção de Riscos em Atividades Portuárias'}
+              rows={6}
+              className="rounded-xl border border-steel-300 bg-white px-3 py-2 text-sm text-steel-800 placeholder-steel-400 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-navy-500"
+            />
+            <p className="text-xs text-steel-500">
+              Opcional. Se vazio, o PDF terá só a frente (1 página). Se preenchido, gera o verso com a lista.
+            </p>
+          </div>
 
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="ghost" onClick={fecharModal}>
