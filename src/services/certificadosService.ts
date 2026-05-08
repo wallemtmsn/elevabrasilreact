@@ -26,7 +26,7 @@ export const certificadosService = {
       .select(`
         *,
         aluno:profiles!aluno_id(nome, cpf, foto_url),
-        curso:cursos!curso_id(titulo, nr_referencia, carga_horaria)
+        curso:cursos!curso_id(titulo, nr_referencia, carga_horaria, conteudo_programatico)
       `)
       .order('data_emissao', { ascending: false })
     if (error) throw new Error(error.message)
@@ -53,15 +53,23 @@ export const certificadosService = {
     cpf_aluno?: string | null
     nr_referencia?: string | null
     carga_horaria?: number | null
+    documento_instrutor?: string | null
+    data_inicio?: string | null
+    data_fim?: string | null
+    conteudo_programatico?: string | null
   }): Promise<Certificado> {
     const { data, error } = await supabase.rpc('emitir_certificado_presencial', {
-      p_nome_aluno:     payload.nome_aluno,
-      p_nome_curso:     payload.nome_curso,
-      p_instrutor:      payload.instrutor,
-      p_validade_meses: payload.validade_meses ?? null,
-      p_cpf_aluno:      payload.cpf_aluno ?? null,
-      p_nr_referencia:  payload.nr_referencia ?? null,
-      p_carga_horaria:  payload.carga_horaria ?? null,
+      p_nome_aluno:            payload.nome_aluno,
+      p_nome_curso:            payload.nome_curso,
+      p_instrutor:             payload.instrutor,
+      p_validade_meses:        payload.validade_meses ?? null,
+      p_cpf_aluno:             payload.cpf_aluno ?? null,
+      p_nr_referencia:         payload.nr_referencia ?? null,
+      p_carga_horaria:         payload.carga_horaria ?? null,
+      p_documento_instrutor:   payload.documento_instrutor ?? null,
+      p_data_inicio:           payload.data_inicio ?? null,
+      p_data_fim:              payload.data_fim ?? null,
+      p_conteudo_programatico: payload.conteudo_programatico ?? null,
     })
     if (error) throw new Error(error.message)
     return data as Certificado

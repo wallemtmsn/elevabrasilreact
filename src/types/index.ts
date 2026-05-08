@@ -27,6 +27,7 @@ export interface Curso {
   nr_referencia?: string | null
   exige_pratico: boolean
   validade_meses: number
+  conteudo_programatico?: string | null
   criado_em: string
   atualizado_em: string
 }
@@ -63,12 +64,21 @@ export interface Certificado {
   nr_referencia_avulso?: string | null
   carga_horaria_avulso?: number | null
   instrutor_avulso?: string | null
+  documento_instrutor_avulso?: string | null
+  data_inicio_avulso?: string | null
+  data_fim_avulso?: string | null
+  conteudo_programatico_avulso?: string | null
   emitido_por?: string | null
 }
 
 export interface CertificadoAdmin extends Certificado {
   aluno?: { nome: string; cpf: string; foto_url?: string | null } | null
-  curso?: { titulo: string; nr_referencia?: string | null; carga_horaria?: number | null } | null
+  curso?: {
+    titulo: string
+    nr_referencia?: string | null
+    carga_horaria?: number | null
+    conteudo_programatico?: string | null
+  } | null
 }
 
 export interface MetricasCertificados {
