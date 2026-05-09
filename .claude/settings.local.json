@@ -14,7 +14,8 @@
       "Bash(ls -la *.jpg)",
       "Bash(sort -k2)",
       "Bash(ls *.jpg)",
-      "mcp__plugin_playwright_playwright__browser_click"
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__e7951237-4628-4bca-8c82-938e3e734407__execute_sql"
     ]
   }
 }
