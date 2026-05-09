@@ -69,6 +69,7 @@ export interface Certificado {
   data_fim_avulso?: string | null
   conteudo_programatico_avulso?: string | null
   emitido_por?: string | null
+  pdf_url?: string | null
 }
 
 export interface CertificadoAdmin extends Certificado {
@@ -79,6 +80,20 @@ export interface CertificadoAdmin extends Certificado {
     carga_horaria?: number | null
     conteudo_programatico?: string | null
   } | null
+}
+
+export interface MatriculaComCert {
+  matricula_id: string
+  aluno_id: string
+  aluno_nome: string
+  aluno_cpf: string
+  curso_id: string
+  curso_titulo: string
+  nr_referencia?: string | null
+  liberado_em: string
+  cert_id?: string | null
+  pdf_url?: string | null
+  data_emissao?: string | null
 }
 
 export interface MetricasCertificados {
