@@ -13,8 +13,9 @@ import { ProvasAdmin } from './sections/ProvasAdmin'
 import { CertificadosAdmin } from './sections/CertificadosAdmin'
 import { PendentesPratico } from './sections/PendentesPratico'
 import { TeoricoConcluido } from './sections/TeoricoConcluido'
+import { ProgressoAlunos } from './sections/ProgressoAlunos'
 
-type Section = 'dashboard' | 'alunos' | 'cursos' | 'conteudo' | 'matriculas' | 'perguntas' | 'provas' | 'certificados' | 'pendentes_pratico' | 'teorico_concluido'
+type Section = 'dashboard' | 'alunos' | 'cursos' | 'conteudo' | 'matriculas' | 'perguntas' | 'provas' | 'certificados' | 'pendentes_pratico' | 'teorico_concluido' | 'progresso'
 
 const navItems: { id: Section; label: string; icon: React.ReactNode }[] = [
   {
@@ -67,6 +68,11 @@ const navItems: { id: Section; label: string; icon: React.ReactNode }[] = [
     label: 'Teórico Concluído',
     icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>,
   },
+  {
+    id: 'progresso' as const,
+    label: 'Progresso',
+    icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+  },
 ]
 
 export function AdminPage() {
@@ -100,6 +106,7 @@ export function AdminPage() {
       case 'certificados': return <CertificadosAdmin />
       case 'pendentes_pratico': return <PendentesPratico />
       case 'teorico_concluido': return <TeoricoConcluido />
+      case 'progresso': return <ProgressoAlunos />
     }
   }
 

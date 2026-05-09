@@ -162,6 +162,23 @@ export interface ProgressoAula {
   concluida_em?: string | null
 }
 
+export interface ProgressoAluno {
+  aluno_id: string
+  aluno_nome: string
+  aluno_cpf: string
+  matricula_id: string
+  curso_id: string
+  curso_titulo: string
+  nr_referencia: string | null
+  liberado_em: string
+  total_aulas: number
+  aulas_concluidas: number
+  progresso_pct: number
+  teorico_concluido: boolean
+  pratico_concluido: boolean
+  certificado_emitido: boolean
+}
+
 export type ToastType = 'success' | 'error' | 'info'
 
 export interface Toast {
