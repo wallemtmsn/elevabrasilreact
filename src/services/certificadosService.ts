@@ -111,6 +111,33 @@ export const certificadosService = {
     }
   },
 
+  // Admin: faz upload de um PDF para o bucket 'certificados' e registra via RPC.
+  // Path no Storage: {alunoId}/{matriculaId}.pdf (sobrescreve se já existir).
+  // Retorna o certificado criado/atualizado.
+  async uploadCertificadoPDF(matriculaId: string, file: File, alunoId: string): Promise<Certificado> {
+    const path = `${alunoId}/${matriculaId}.pdf`
+    const { error: upErr } = await supabase.storage
+      .from('certificados')
+      .upload(path, file, { upsert: true, contentType: 'application/pdf' })
+    if (upErr) throw new Error(upErr.message)
+
+    const { data, error } = await supabase.rpc('emitir_certificado_upload', {
+      p_matricula_id: matriculaId,
+      p_pdf_url: path,
+    })
+    if (error) throw new Error(error.message)
+    return data as Certificado
+  },
+
+  // Gera signed URL temporária (1h) para download de um cert armazenado no bucket privado.
+  async getCertificadoSignedUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from('certificados')
+      .createSignedUrl(path, 3600)
+    if (error) throw new Error(error.message)
+    return data.signedUrl
+  },
+
   // Admin: métricas agregadas de certificados
   async getMetricas(): Promise<MetricasCertificados> {
     const now = new Date()
