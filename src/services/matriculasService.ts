@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Certificado, Curso, Matricula } from '@/types'
+import type { Certificado, Curso, Matricula, MatriculaComCert } from '@/types'
 
 export type { Matricula }
 
@@ -69,6 +69,38 @@ export const matriculasService = {
       .select('aluno_id, curso_id')
     if (error) throw new Error(error.message)
     return data || []
+  },
+
+  // admin: retorna todas as matrículas com dados de aluno, curso e certificado (para tela de upload)
+  async getAllMatriculasComCert(): Promise<MatriculaComCert[]> {
+    const { data, error } = await supabase
+      .from('matriculas')
+      .select(`
+        id,
+        aluno_id,
+        curso_id,
+        liberado_em,
+        certificado_id,
+        profiles!aluno_id(nome, cpf),
+        cursos!curso_id(titulo, nr_referencia),
+        certificados!certificado_id(id, pdf_url, data_emissao)
+      `)
+      .order('liberado_em', { ascending: false })
+    if (error) throw new Error(error.message)
+
+    return ((data || []) as any[]).map(m => ({
+      matricula_id: m.id,
+      aluno_id: m.aluno_id,
+      aluno_nome: m.profiles?.nome ?? '',
+      aluno_cpf: m.profiles?.cpf ?? '',
+      curso_id: m.curso_id,
+      curso_titulo: m.cursos?.titulo ?? '',
+      nr_referencia: m.cursos?.nr_referencia ?? null,
+      liberado_em: m.liberado_em,
+      cert_id: m.certificados?.id ?? null,
+      pdf_url: m.certificados?.pdf_url ?? null,
+      data_emissao: m.certificados?.data_emissao ?? null,
+    })) as MatriculaComCert[]
   },
 
   // admin: marca prático como concluído e registra data

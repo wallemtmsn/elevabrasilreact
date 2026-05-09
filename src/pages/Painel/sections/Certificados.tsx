@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react'
-import { pdf } from '@react-pdf/renderer'
 import { useAuth } from '@/contexts/AuthContext'
 import { certificadosService } from '@/services/certificadosService'
 import { cursosService } from '@/services/cursosService'
-import { CertificadoPDF } from '@/components/certificados/CertificadoPDF'
-import type { CertificadoPDFData } from '@/components/certificados/CertificadoPDF'
-import type { Certificado } from '@/types'
+import type { Certificado, Curso } from '@/types'
 
 function formatarData(iso: string): string {
   try {
@@ -20,107 +17,72 @@ function isVencido(data?: string | null): boolean {
   return new Date(data) < new Date()
 }
 
-function DownloadButton({ pdfData, numeroSerie }: { pdfData: CertificadoPDFData; numeroSerie: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null)
-  const [preparando, setPreparando] = useState(true)
+function DownloadButton({ cert }: { cert: Certificado }) {
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    let url: string
-    pdf(<CertificadoPDF dados={pdfData} />)
-      .toBlob()
-      .then(blob => {
-        url = URL.createObjectURL(blob)
-        setBlobUrl(url)
-      })
-      .catch(err => {
-        console.error('Erro ao preparar PDF do certificado:', err)
-      })
-      .finally(() => setPreparando(false))
-    return () => { if (url) URL.revokeObjectURL(url) }
-  }, [pdfData])
-
-  if (preparando) {
-    return <div className="h-10 bg-steel-100 rounded-xl animate-pulse mt-auto" />
-  }
-
-  if (!blobUrl) {
-    return (
-      <div className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-steel-200 text-steel-500 text-sm font-medium cursor-not-allowed">
-        Erro ao preparar PDF
-      </div>
-    )
+  async function handleClick() {
+    if (!cert.pdf_url) return
+    setLoading(true)
+    try {
+      const url = await certificadosService.getCertificadoSignedUrl(cert.pdf_url)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      // Falha silenciosa — o link não abre, o usuário pode tentar novamente
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <a
-      href={blobUrl}
-      download={`certificado-${numeroSerie}.pdf`}
-      className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors"
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="mt-auto w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-navy-500 text-white text-sm font-medium hover:bg-navy-600 transition-colors disabled:opacity-60"
     >
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      Baixar Certificado PDF
-    </a>
+      {loading ? (
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      )}
+      Baixar Certificado
+    </button>
   )
 }
 
 export function Certificados() {
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const [certificados, setCertificados] = useState<Certificado[]>([])
-  const [pdfDataMap, setPdfDataMap] = useState<Record<string, CertificadoPDFData>>({})
+  const [cursoMap, setCursoMap] = useState<Record<string, Curso>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
     const load = async () => {
       try {
-        const certs = await certificadosService.getMeusCertificados(user.id)
-        // Aluno vê apenas certificados vinculados (a RLS já filtra presenciais,
-        // mas filtramos no client para satisfazer o tipo nullable).
-        const certsVinculados = certs.filter(
-          (c): c is typeof c & { curso_id: string } => c.curso_id !== null
-        )
-        setCertificados(certsVinculados)
+        const all = await certificadosService.getMeusCertificados(user.id)
+        // Mostrar apenas certificados com PDF enviado pelo admin
+        const comPdf = all.filter(c => c.pdf_url)
+        setCertificados(comPdf)
 
-        if (certsVinculados.length > 0) {
-          const cursoIds = [...new Set(certsVinculados.map(c => c.curso_id))]
+        const cursoIds = [...new Set(comPdf.filter(c => c.curso_id).map(c => c.curso_id!))]
+        if (cursoIds.length > 0) {
           const cursos = await Promise.all(cursoIds.map(id => cursosService.getById(id)))
-          const cursoMap = Object.fromEntries(
-            cursos.filter(Boolean).map(c => [c!.id, c!])
-          )
-
-          const map: Record<string, CertificadoPDFData> = {}
-          for (const cert of certsVinculados) {
-            const curso = cursoMap[cert.curso_id]
-            map[cert.id] = {
-              nome_aluno:    profile?.nome ?? '',
-              cpf_aluno:     profile?.cpf ?? '',
-              foto_url:      profile?.foto_url ?? null,
-              nome_curso:    curso?.titulo ?? '',
-              nr_referencia: curso?.nr_referencia ?? null,
-              carga_horaria: curso?.carga_horaria ?? null,
-              data_emissao:  cert.data_emissao,
-              data_validade: cert.data_validade ?? null,
-              numero_serie:  cert.numero_serie,
-              tipo:          cert.tipo,
-              // Vinculados não têm instrutor próprio — usa padrão fixo da empresa
-              instrutor:           'Equipe Eleva Brasil Treinamentos',
-              documento_instrutor: 'Responsável Técnico',
-              // Conteúdo programático cai do curso (se cadastrado)
-              conteudo_programatico: curso?.conteudo_programatico ?? null,
-            }
-          }
-          setPdfDataMap(map)
+          setCursoMap(Object.fromEntries(cursos.filter(Boolean).map(c => [c!.id, c!])))
         }
       } catch {
-        // silencioso — estado vazio já trata
+        // silencioso
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [user, profile])
+  }, [user])
 
   if (loading) {
     return (
@@ -146,14 +108,14 @@ export function Certificados() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           </div>
-          <p className="font-medium text-steel-600 mb-1">Nenhum certificado ainda</p>
-          <p className="text-sm text-steel-400">Complete um curso para receber seu certificado.</p>
+          <p className="font-medium text-steel-600 mb-1">Nenhum certificado disponível</p>
+          <p className="text-sm text-steel-400">Seus certificados aparecerão aqui após a emissão pelo admin.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {certificados.map(cert => {
+            const curso = cert.curso_id ? cursoMap[cert.curso_id] : undefined
             const vencido = isVencido(cert.data_validade)
-            const pdfData = pdfDataMap[cert.id]
 
             return (
               <div
@@ -167,12 +129,8 @@ export function Certificados() {
                     </svg>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      cert.tipo === 'completo'
-                        ? 'bg-navy-500/10 text-navy-500'
-                        : 'bg-blue-50 text-blue-600'
-                    }`}>
-                      {cert.tipo === 'completo' ? 'Completo' : 'Teórico'}
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-navy-500/10 text-navy-500">
+                      Certificado
                     </span>
                     {vencido && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-600">
@@ -184,10 +142,10 @@ export function Certificados() {
 
                 <div>
                   <p className="font-semibold text-steel-800 leading-snug">
-                    {pdfData?.nome_curso ?? '—'}
+                    {curso?.titulo ?? '—'}
                   </p>
-                  {pdfData?.nr_referencia && (
-                    <span className="text-xs text-orange-500 font-medium">{pdfData.nr_referencia}</span>
+                  {curso?.nr_referencia && (
+                    <span className="text-xs text-orange-500 font-medium">{curso.nr_referencia}</span>
                   )}
                 </div>
 
@@ -204,11 +162,7 @@ export function Certificados() {
                   )}
                 </div>
 
-                {pdfData ? (
-                  <DownloadButton pdfData={pdfData} numeroSerie={cert.numero_serie} />
-                ) : (
-                  <div className="h-10 bg-steel-100 rounded-xl animate-pulse mt-auto" />
-                )}
+                <DownloadButton cert={cert} />
               </div>
             )
           })}
