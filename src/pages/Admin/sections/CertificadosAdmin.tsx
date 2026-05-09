@@ -42,6 +42,10 @@ export function CertificadosAdmin() {
   const [loading, setLoading] = useState(true)
   const [emitindo, setEmitindo] = useState<string | null>(null)
 
+  // Exclusão (modal de confirmação)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState<CertificadoAdmin | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+
   // Modal emissão presencial
   const [modalPresencial, setModalPresencial] = useState(false)
   const [form, setForm] = useState<FormPresencial>(emptyForm)
@@ -177,6 +181,21 @@ export function CertificadosAdmin() {
     }
   }
 
+  const handleConfirmarExclusao = async () => {
+    if (!confirmandoExclusao) return
+    setExcluindo(true)
+    try {
+      await certificadosService.excluirCertificado(confirmandoExclusao.id)
+      showToast('Certificado excluído.', 'success')
+      setConfirmandoExclusao(null)
+      await load()
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Erro ao excluir certificado.', 'error')
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
   const load = async () => {
     try {
       const [certs, mets] = await Promise.all([
@@ -277,6 +296,7 @@ export function CertificadosAdmin() {
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide">Validade</th>
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide">Tipo</th>
                   <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide text-center">PDF</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-steel-500 uppercase tracking-wide text-center">Excluir</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-steel-100">
@@ -357,6 +377,19 @@ export function CertificadosAdmin() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <CertificadoDownloadButton pdfData={pdfData} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setConfirmandoExclusao(cert)}
+                          className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-red-50 text-steel-400 hover:text-red-600 transition-colors"
+                          title="Excluir certificado"
+                          aria-label="Excluir certificado"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                          </svg>
+                        </button>
                       </td>
                     </tr>
                   )
@@ -514,6 +547,62 @@ export function CertificadosAdmin() {
             ) : null}
           </div>
         </div>
+      </Modal>
+
+      {/* Modal — Confirmação de exclusão */}
+      <Modal
+        open={!!confirmandoExclusao}
+        onClose={() => !excluindo && setConfirmandoExclusao(null)}
+        title="Excluir certificado"
+        maxWidth="sm"
+      >
+        {confirmandoExclusao && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-steel-700">
+              Você tem certeza que deseja excluir este certificado?
+            </p>
+            <div className="bg-steel-50 rounded-lg p-3 text-sm space-y-1">
+              <p>
+                <span className="font-semibold text-steel-700">Aluno:</span>{' '}
+                {confirmandoExclusao.tipo === 'presencial'
+                  ? confirmandoExclusao.nome_aluno_avulso
+                  : confirmandoExclusao.aluno?.nome ?? '—'}
+              </p>
+              <p>
+                <span className="font-semibold text-steel-700">Curso:</span>{' '}
+                {confirmandoExclusao.tipo === 'presencial'
+                  ? confirmandoExclusao.nome_curso_avulso
+                  : confirmandoExclusao.curso?.titulo ?? '—'}
+              </p>
+              <p>
+                <span className="font-semibold text-steel-700">Nº Série:</span>{' '}
+                <code className="text-xs">{confirmandoExclusao.numero_serie}</code>
+              </p>
+            </div>
+            {confirmandoExclusao.matricula_id && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                ⚠️ Este certificado é de uma matrícula vinculada. Excluí-lo permite
+                ao admin reemiti-lo depois (o progresso teórico/prático do aluno
+                não é alterado).
+              </p>
+            )}
+            <p className="text-xs text-red-600">
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="ghost" onClick={() => setConfirmandoExclusao(null)} disabled={excluindo}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmarExclusao}
+                loading={excluindo}
+                className="!bg-red-600 hover:!bg-red-700"
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

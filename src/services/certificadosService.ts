@@ -43,6 +43,14 @@ export const certificadosService = {
     return data as Certificado
   },
 
+  // Admin: exclui um certificado emitido. Para vinculados, a RPC reseta a
+  // matrícula (certificado_emitido = false, certificado_id = NULL) na mesma
+  // transação — admin pode reemitir depois sem precisar mexer no progresso.
+  async excluirCertificado(id: string): Promise<void> {
+    const { error } = await supabase.rpc('excluir_certificado', { p_id: id })
+    if (error) throw new Error(error.message)
+  },
+
   // Chama RPC server-side: emite certificado presencial (sem matrícula vinculada).
   // Serial gerado via certificados_seq — sem colisão de Math.random().
   async emitirCertificadoPresencial(payload: {
