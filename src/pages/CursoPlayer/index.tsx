@@ -417,7 +417,7 @@ export function CursoPlayerPage() {
 
         {/* Logo */}
         <img
-          src="/assets/img/logo.png"
+          src="/assets/img/logo.jpg"
           alt="Eleva Brasil"
           className="h-6 w-auto flex-shrink-0 hidden md:block"
         />
