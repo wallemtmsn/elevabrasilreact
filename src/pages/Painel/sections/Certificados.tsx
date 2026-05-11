@@ -12,11 +12,6 @@ function formatarData(iso: string): string {
   }
 }
 
-function isVencido(data?: string | null): boolean {
-  if (!data) return false
-  return new Date(data) < new Date()
-}
-
 function DownloadButton({ cert }: { cert: Certificado }) {
   const [loading, setLoading] = useState(false)
 
@@ -115,7 +110,6 @@ export function Certificados() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {certificados.map(cert => {
             const curso = cert.curso_id ? cursoMap[cert.curso_id] : undefined
-            const vencido = isVencido(cert.data_validade)
 
             return (
               <div
@@ -132,11 +126,6 @@ export function Certificados() {
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-navy-500/10 text-navy-500">
                       Certificado
                     </span>
-                    {vencido && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-600">
-                        Vencido
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -155,11 +144,7 @@ export function Certificados() {
 
                 <div className="flex flex-col gap-1 text-xs text-steel-500">
                   <span>Emitido em {formatarData(cert.data_emissao)}</span>
-                  {cert.data_validade && (
-                    <span className={vencido ? 'text-red-500 font-medium' : ''}>
-                      Válido até {formatarData(cert.data_validade)}
-                    </span>
-                  )}
+                  <span>Disponível por 6 meses após a emissão</span>
                 </div>
 
                 <DownloadButton cert={cert} />
