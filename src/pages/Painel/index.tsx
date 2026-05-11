@@ -92,7 +92,7 @@ export function PainelPage() {
     {/* Modal: novo cadastro */}
     <Modal open={showWelcome} onClose={() => setShowWelcome(false)} maxWidth="sm">
       <div className="flex flex-col items-center gap-5 py-4 text-center">
-        <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-12 w-auto" />
+        <img src="/assets/img/logo.jpg" alt="Eleva Brasil" className="h-12 w-auto" />
         <svg className="animate-spin h-9 w-9 text-navy-500" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -107,7 +107,7 @@ export function PainelPage() {
     {/* Modal: boas-vindas de retorno */}
     <Modal open={showBemVindo} onClose={() => setShowBemVindo(false)} maxWidth="sm">
       <div className="flex flex-col items-center gap-4 py-2 text-center">
-        <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-10 w-auto" />
+        <img src="/assets/img/logo.jpg" alt="Eleva Brasil" className="h-10 w-auto" />
         <div className="w-16 h-16 rounded-full bg-navy-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
           {profile.nome.charAt(0).toUpperCase()}
         </div>
@@ -141,7 +141,7 @@ export function PainelPage() {
       ].join(' ')}>
         {/* Logo */}
         <div className="p-6 border-b border-white/10">
-          <img src="/assets/img/logo.png" alt="Eleva Brasil" className="h-8 w-auto" />
+          <img src="/assets/img/logo.jpg" alt="Eleva Brasil" className="h-8 w-auto" />
         </div>
 
         {/* User info */}
