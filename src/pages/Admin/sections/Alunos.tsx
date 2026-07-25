@@ -17,6 +17,7 @@ export function Alunos() {
   const [editForm, setEditForm] = useState({ nome: '', telefone: '', empresa: '', cargo: '' })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const [roleTarget, setRoleTarget] = useState<ProfileWithEmail | null>(null)
 
   const load = async () => {
@@ -68,15 +69,18 @@ export function Alunos() {
   }
 
   const handleDelete = async () => {
-    if (!deleting) return
-    setConfirmDelete(false)
+    if (!deleting || excluindo) return
+    setExcluindo(true)
     try {
       await profileService.delete(deleting.id)
       showToast('Aluno excluído.', 'info')
+      setConfirmDelete(false)
       setDeleting(null)
       await load()
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Erro ao excluir.', 'error')
+    } finally {
+      setExcluindo(false)
     }
   }
 
@@ -258,13 +262,13 @@ export function Alunos() {
       </Modal>
 
       {/* Delete confirm modal */}
-      <Modal open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Confirmar exclusão">
+      <Modal open={confirmDelete} onClose={() => !excluindo && setConfirmDelete(false)} title="Confirmar exclusão">
         <p className="text-steel-600 mb-6">
           Tem certeza que deseja excluir <strong>{deleting?.nome}</strong>? Esta ação não pode ser desfeita.
         </p>
         <div className="flex gap-2 justify-end">
-          <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-          <Button variant="danger" onClick={handleDelete}>Excluir</Button>
+          <Button variant="ghost" disabled={excluindo} onClick={() => setConfirmDelete(false)}>Cancelar</Button>
+          <Button variant="danger" loading={excluindo} onClick={handleDelete}>Excluir</Button>
         </div>
       </Modal>
     </>
