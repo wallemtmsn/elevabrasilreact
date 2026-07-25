@@ -117,6 +117,7 @@ export function CursoPlayerPage() {
   const [provasMap, setProvasMap] = useState<Record<string, Prova>>({})       // modulo_id → Prova
   const [modulosAprovados, setModulosAprovados] = useState<Set<string>>(new Set()) // modulo_ids aprovados
   const [provaAtiva, setProvaAtiva] = useState<{ prova: Prova; moduloTitulo: string } | null>(null)
+  const [carregandoProva, setCarregandoProva] = useState<string | null>(null) // modulo_id em carregamento
 
   // Abas
   const [abaAtual, setAbaAtual] = useState<'visao-geral' | 'qa'>('visao-geral')
@@ -328,6 +329,9 @@ export function CursoPlayerPage() {
             if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
               setTimeout(() => setProvaAtiva({ prova: provaCompleta, moduloTitulo: moduloAtual.titulo }), 400)
               return // não avança aula automaticamente
+            } else if (provaCompleta) {
+              console.error('[Avaliação] Prova sem questões cadastradas (auto-abertura)', { moduloId: moduloAtual.id, provaId: provaCompleta.id })
+              showToast('A avaliação deste módulo ainda não está disponível. Contate o suporte.', 'error')
             }
           }
         }
@@ -764,9 +768,21 @@ export function CursoPlayerPage() {
 
               async function abrirProvaModulo(e: React.MouseEvent) {
                 e.stopPropagation()
-                const provaCompleta = await provasService.getProvaByModulo(modulo.id)
-                if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
-                  setProvaAtiva({ prova: provaCompleta, moduloTitulo: modulo.titulo })
+                if (carregandoProva) return
+                setCarregandoProva(modulo.id)
+                try {
+                  const provaCompleta = await provasService.getProvaByModulo(modulo.id)
+                  if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
+                    setProvaAtiva({ prova: provaCompleta, moduloTitulo: modulo.titulo })
+                  } else {
+                    console.error('[Avaliação] Prova sem questões cadastradas', { moduloId: modulo.id, provaId: provaCompleta?.id })
+                    showToast('Esta avaliação ainda não está disponível. Contate o suporte.', 'error')
+                  }
+                } catch (err) {
+                  console.error('[Avaliação] Falha ao carregar prova do módulo', { moduloId: modulo.id, error: err })
+                  showToast(err instanceof Error ? err.message : 'Não foi possível carregar a avaliação.', 'error')
+                } finally {
+                  setCarregandoProva(null)
                 }
               }
 
@@ -810,9 +826,10 @@ export function CursoPlayerPage() {
                     {provaAguardando && (
                       <button
                         onClick={abrirProvaModulo}
-                        className="flex-shrink-0 text-xs px-2 py-1 rounded-lg bg-amber-100 text-amber-700 font-medium hover:bg-amber-200 transition-colors whitespace-nowrap"
+                        disabled={carregandoProva === modulo.id}
+                        className="flex-shrink-0 text-xs px-2 py-1 rounded-lg bg-amber-100 text-amber-700 font-medium hover:bg-amber-200 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-wait"
                       >
-                        Fazer avaliação
+                        {carregandoProva === modulo.id ? 'Carregando...' : 'Fazer avaliação'}
                       </button>
                     )}
                   </div>

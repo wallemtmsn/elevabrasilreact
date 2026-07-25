@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { provasService } from '@/services/provasService'
+import { useToast } from '@/contexts/ToastContext'
 import type { Prova, TentativaProva } from '@/types'
 
 interface ProvaModalProps {
@@ -18,6 +19,7 @@ const LETRA = ['A', 'B', 'C', 'D'] as const
 
 export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar }: ProvaModalProps) {
   const questoes = prova.questoes || []
+  const { showToast } = useToast()
 
   const [fase, setFase] = useState<Fase>('intro')
   const [respostas, setRespostas] = useState<Record<string, string>>({})
@@ -35,8 +37,9 @@ export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar 
       setResultado(tent)
       setFase('resultado')
       if (tent.aprovado) onAprovado()
-    } catch {
-      // silent — não bloqueia o aluno
+    } catch (err) {
+      console.error('[Avaliação] Falha ao submeter tentativa', { provaId: prova.id, alunoId, totalRespostas: Object.keys(respostas).length, error: err })
+      showToast(err instanceof Error ? err.message : 'Não foi possível enviar a avaliação. Tente novamente.', 'error')
     } finally {
       setSubmetendo(false)
     }
