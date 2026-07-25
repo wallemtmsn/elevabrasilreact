@@ -23,7 +23,10 @@ export const profileService = {
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
+    // Exclusão via RPC (não DELETE direto): matriculas/certificados têm FK
+    // ON DELETE NO ACTION para profiles, então um DELETE cru falharia por
+    // violação de constraint para qualquer aluno com matrícula ou certificado.
+    const { error } = await supabase.rpc('excluir_aluno', { p_aluno_id: id })
     if (error) throw new Error(error.message)
   },
 
