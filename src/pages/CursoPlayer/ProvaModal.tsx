@@ -65,7 +65,7 @@ export function ProvaModal({ prova, alunoId, moduloTitulo, onAprovado, onFechar 
             <p className="text-navy-200 text-xs font-medium uppercase tracking-wide">Avaliação do módulo</p>
             <h2 className="text-white font-bold text-lg leading-tight truncate">{moduloTitulo}</h2>
           </div>
-          {fase === 'resultado' && (
+          {fase === 'resultado' && resultado?.aprovado && (
             <button
               onClick={onFechar}
               className="text-white/60 hover:text-white transition-colors p-1"

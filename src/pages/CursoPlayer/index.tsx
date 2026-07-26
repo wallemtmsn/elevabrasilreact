@@ -304,7 +304,10 @@ export function CursoPlayerPage() {
 
   const idxAtual = aulaAtual ? todasAulas.findIndex(a => a.id === aulaAtual.id) : -1
   const podePrev = idxAtual > 0
-  const podeNext = idxAtual < todasAulas.length - 1
+
+  const proximaAula = idxAtual >= 0 && idxAtual < todasAulas.length - 1 ? todasAulas[idxAtual + 1] : null
+  const proximoModuloIdx = proximaAula ? modulos.findIndex(m => m.aulas?.some(a => a.id === proximaAula.id)) : -1
+  const podeNext = !!proximaAula && (proximoModuloIdx === -1 || !isModuloBloqueado(proximoModuloIdx))
 
   const deveBloquearBotao =
     !!aulaAtual?.video_url &&
@@ -344,6 +347,13 @@ export function CursoPlayerPage() {
 
   async function toggleConcluida() {
     if (!aulaAtual || !user || salvando) return
+
+    const moduloAtualIdx = modulos.findIndex(m => m.aulas?.some(a => a.id === aulaAtual.id))
+    if (moduloAtualIdx >= 0 && isModuloBloqueado(moduloAtualIdx) && !concluidas.has(aulaAtual.id)) {
+      showToast('Conclua a avaliação do módulo anterior antes de continuar.', 'error')
+      return
+    }
+
     setSalvando(true)
     try {
       if (concluidas.has(aulaAtual.id)) {
