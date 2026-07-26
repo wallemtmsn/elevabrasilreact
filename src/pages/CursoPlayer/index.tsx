@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -128,7 +128,6 @@ export function CursoPlayerPage() {
   const [respondendoId, setRespondendoId] = useState<string | null>(null)
   const [textoResposta, setTextoResposta] = useState('')
   const [videoAssistido, setVideoAssistido] = useState(false)
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -192,10 +191,6 @@ export function CursoPlayerPage() {
   }, [aulaAtual?.id, abaAtual])
 
   useEffect(() => {
-    if (fallbackTimerRef.current !== null) {
-      clearTimeout(fallbackTimerRef.current)
-      fallbackTimerRef.current = null
-    }
     setVideoAssistido(false)
 
     const url = aulaAtual?.video_url
@@ -204,10 +199,10 @@ export function CursoPlayerPage() {
     const kind = getVideoKind(url)
 
     if (kind === 'unknown') {
-      const delaySec = (aulaAtual.duracao_min ?? 0) > 0
-        ? (aulaAtual.duracao_min as number) * 60
-        : 30
-      fallbackTimerRef.current = setTimeout(() => setVideoAssistido(true), delaySec * 1000)
+      // Vídeos fora do YouTube/Vimeo (ex.: OneDrive) não expõem evento de
+      // término de forma confiável — libera a conclusão sem exigir tempo
+      // mínimo assistido.
+      setVideoAssistido(true)
       return
     }
 
@@ -231,13 +226,7 @@ export function CursoPlayerPage() {
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [aulaAtual?.id, aulaAtual?.video_url, aulaAtual?.duracao_min])
-
-  useEffect(() => {
-    return () => {
-      if (fallbackTimerRef.current !== null) clearTimeout(fallbackTimerRef.current)
-    }
-  }, [])
+  }, [aulaAtual?.id, aulaAtual?.video_url])
 
   const handleFazerPergunta = async () => {
     if (!novaPergunta.trim() || !aulaAtual || !user) return
