@@ -269,10 +269,16 @@ export function CursoPlayerPage() {
 
   const handleVideoEnded = useCallback(() => setVideoAssistido(true), [])
 
-  // Módulo N está bloqueado se o módulo N-1 tem prova e ainda não foi aprovado
+  // Módulo N está bloqueado se as aulas do módulo N-1 não estiverem todas
+  // concluídas, ou se o módulo N-1 tem prova e ela ainda não foi aprovada
   function isModuloBloqueado(moduloIdx: number): boolean {
     if (moduloIdx === 0) return false
     const moduloAnterior = modulos[moduloIdx - 1]
+
+    const aulasAnterior = moduloAnterior.aulas || []
+    const todasAulasConcluidas = aulasAnterior.every(a => concluidas.has(a.id))
+    if (!todasAulasConcluidas) return true
+
     const provaAnterior = provasMap[moduloAnterior.id]
     if (!provaAnterior) return false
     return !modulosAprovados.has(moduloAnterior.id)
