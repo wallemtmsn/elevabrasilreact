@@ -311,7 +311,7 @@ export function CursoPlayerPage() {
         await modulosService.desmarcarConcluida(user.id, aulaAtual.id)
         setConcluidas(prev => { const n = new Set(prev); n.delete(aulaAtual.id); return n })
       } else {
-        await modulosService.marcarConcluida(user.id, aulaAtual.id)
+        await modulosService.marcarConcluida(aulaAtual.id)
         const novasConcluidas = new Set(concluidas).add(aulaAtual.id)
         setConcluidas(novasConcluidas)
 

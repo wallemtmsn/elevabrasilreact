@@ -23,6 +23,7 @@ export const modulosService = {
       .select('*, aulas(*)')
       .eq('curso_id', cursoId)
       .order('ordem', { ascending: true })
+      .order('id', { ascending: true })
 
     if (error) throw new Error(error.message)
 
@@ -107,13 +108,10 @@ export const modulosService = {
 
   // ── progresso ─────────────────────────────────────────────────────────────
 
-  async marcarConcluida(alunoId: string, aulaId: string): Promise<void> {
-    const { error } = await supabase
-      .from('progresso_aulas')
-      .upsert(
-        { aluno_id: alunoId, aula_id: aulaId, concluida: true, concluida_em: new Date().toISOString() },
-        { onConflict: 'aluno_id,aula_id' }
-      )
+  async marcarConcluida(aulaId: string): Promise<void> {
+    // Validação de pré-requisitos (módulo anterior concluído + prova aprovada,
+    // se houver) acontece no servidor — evita bypass via chamada direta à API.
+    const { error } = await supabase.rpc('marcar_aula_concluida', { p_aula_id: aulaId })
     if (error) throw new Error(error.message)
   },
 
