@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -128,7 +128,6 @@ export function CursoPlayerPage() {
   const [respondendoId, setRespondendoId] = useState<string | null>(null)
   const [textoResposta, setTextoResposta] = useState('')
   const [videoAssistido, setVideoAssistido] = useState(false)
-  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -177,7 +176,9 @@ export function CursoPlayerPage() {
           }
         }
       })
-      .catch(() => {})
+      .catch(err => {
+        console.error('[CursoPlayer] Falha ao carregar curso/módulos/progresso', { cursoId: id, error: err })
+      })
       .finally(() => setLoading(false))
   }, [id, user])
 
@@ -192,10 +193,6 @@ export function CursoPlayerPage() {
   }, [aulaAtual?.id, abaAtual])
 
   useEffect(() => {
-    if (fallbackTimerRef.current !== null) {
-      clearTimeout(fallbackTimerRef.current)
-      fallbackTimerRef.current = null
-    }
     setVideoAssistido(false)
 
     const url = aulaAtual?.video_url
@@ -204,10 +201,10 @@ export function CursoPlayerPage() {
     const kind = getVideoKind(url)
 
     if (kind === 'unknown') {
-      const delaySec = (aulaAtual.duracao_min ?? 0) > 0
-        ? (aulaAtual.duracao_min as number) * 60
-        : 30
-      fallbackTimerRef.current = setTimeout(() => setVideoAssistido(true), delaySec * 1000)
+      // Vídeos fora do YouTube/Vimeo (ex.: OneDrive) não expõem evento de
+      // término de forma confiável — libera a conclusão sem exigir tempo
+      // mínimo assistido.
+      setVideoAssistido(true)
       return
     }
 
@@ -231,13 +228,7 @@ export function CursoPlayerPage() {
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [aulaAtual?.id, aulaAtual?.video_url, aulaAtual?.duracao_min])
-
-  useEffect(() => {
-    return () => {
-      if (fallbackTimerRef.current !== null) clearTimeout(fallbackTimerRef.current)
-    }
-  }, [])
+  }, [aulaAtual?.id, aulaAtual?.video_url])
 
   const handleFazerPergunta = async () => {
     if (!novaPergunta.trim() || !aulaAtual || !user) return
@@ -261,7 +252,10 @@ export function CursoPlayerPage() {
       setTextoResposta('')
       const updated = await perguntasService.getByAula(aulaAtual.id)
       setPerguntas(updated)
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error('[Q&A] Erro ao enviar resposta:', err)
+      showToast('Erro ao enviar resposta.', 'error')
+    }
   }
 
   const todasAulas = getTodasAulas(modulos)
@@ -280,10 +274,16 @@ export function CursoPlayerPage() {
 
   const handleVideoEnded = useCallback(() => setVideoAssistido(true), [])
 
-  // Módulo N está bloqueado se o módulo N-1 tem prova e ainda não foi aprovado
+  // Módulo N está bloqueado se as aulas do módulo N-1 não estiverem todas
+  // concluídas, ou se o módulo N-1 tem prova e ela ainda não foi aprovada
   function isModuloBloqueado(moduloIdx: number): boolean {
     if (moduloIdx === 0) return false
     const moduloAnterior = modulos[moduloIdx - 1]
+
+    const aulasAnterior = moduloAnterior.aulas || []
+    const todasAulasConcluidas = aulasAnterior.every(a => concluidas.has(a.id))
+    if (!todasAulasConcluidas) return true
+
     const provaAnterior = provasMap[moduloAnterior.id]
     if (!provaAnterior) return false
     return !modulosAprovados.has(moduloAnterior.id)
@@ -343,7 +343,10 @@ export function CursoPlayerPage() {
             if (resultado.certificado) {
               showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
             }
-          } catch { /* silent — não bloqueia o fluxo */ }
+          } catch (err) {
+            console.error('[Certificado] Falha ao verificar/emitir certificado', { userId: user.id, cursoId: id, error: err })
+            showToast('Não foi possível verificar/emitir o certificado. Tente novamente ou contate o suporte.', 'error')
+          }
         }
 
         // auto-advance to next lesson
@@ -907,7 +910,10 @@ export function CursoPlayerPage() {
                     showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
                   }
                 })
-                .catch(() => { /* silent */ })
+                .catch(err => {
+                  console.error('[Certificado] Falha ao verificar/emitir certificado', { userId: user!.id, cursoId: id, error: err })
+                  showToast('Não foi possível verificar/emitir o certificado. Tente novamente ou contate o suporte.', 'error')
+                })
             }
           }}
           onFechar={() => {
