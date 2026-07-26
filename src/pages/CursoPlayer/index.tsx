@@ -49,6 +49,33 @@ function getTodasAulas(modulos: Modulo[]): Aula[] {
   return modulos.flatMap(m => m.aulas || [])
 }
 
+// Encontra onde o aluno realmente parou: a primeira aula não concluída do
+// primeiro módulo incompleto, ou — se todas as aulas de um módulo já foram
+// concluídas mas a avaliação dele está pendente — a última aula desse módulo
+// (sinalizando que a avaliação deve reabrir automaticamente).
+function determinarPosicaoInicial(
+  modulos: Modulo[],
+  concluidas: Set<string>,
+  provasMap: Record<string, Prova>,
+  modulosAprovados: Set<string>
+): { aula: Aula | null; moduloProvaPendente: Modulo | null } {
+  for (const modulo of modulos) {
+    const aulas = modulo.aulas || []
+    const primeiraNaoConcluida = aulas.find(a => !concluidas.has(a.id))
+    if (primeiraNaoConcluida) {
+      return { aula: primeiraNaoConcluida, moduloProvaPendente: null }
+    }
+
+    const prova = provasMap[modulo.id]
+    if (prova && !modulosAprovados.has(modulo.id)) {
+      return { aula: aulas[aulas.length - 1] ?? null, moduloProvaPendente: modulo }
+    }
+  }
+
+  const todasAulas = getTodasAulas(modulos)
+  return { aula: todasAulas[todasAulas.length - 1] ?? modulos[0]?.aulas?.[0] ?? null, moduloProvaPendente: null }
+}
+
 // ─── VideoPlayer ─────────────────────────────────────────────────────────────
 
 interface VideoPlayerProps { url: string; onEnded: () => void }
@@ -143,10 +170,6 @@ export function CursoPlayerPage() {
         // expand all modules by default
         setModulosExpandidos(new Set(mods.map(m => m.id)))
 
-        // set first aula as current
-        const primeiraAula = mods[0]?.aulas?.[0] ?? null
-        setAulaAtual(primeiraAula)
-
         // fetch progresso + provas em paralelo
         if (user && mods.length > 0) {
           const aulaIds = getTodasAulas(mods).map(a => a.id)
@@ -166,14 +189,30 @@ export function CursoPlayerPage() {
           setProvasMap(pMap)
 
           // verifica quais módulos já foram aprovados
+          let aprovadosSet = new Set<string>()
           const provaIds = provas.map(p => p.id)
           if (provaIds.length > 0) {
             const aprovadas = await provasService.getTentativasAprovadas(user.id, provaIds)
-            const aprovadosSet = new Set(
+            aprovadosSet = new Set(
               aprovadas.map(t => provas.find(p => p.id === t.prova_id)?.modulo_id).filter(Boolean) as string[]
             )
             setModulosAprovados(aprovadosSet)
           }
+
+          // Restaura a posição exata de onde o aluno parou (aula não concluída
+          // mais antiga, ou módulo com avaliação pendente) em vez de sempre
+          // voltar para a primeira aula do curso
+          const { aula, moduloProvaPendente } = determinarPosicaoInicial(mods, ids, pMap, aprovadosSet)
+          setAulaAtual(aula)
+
+          if (moduloProvaPendente) {
+            const provaCompleta = await provasService.getProvaByModulo(moduloProvaPendente.id)
+            if (provaCompleta && (provaCompleta.questoes?.length ?? 0) > 0) {
+              setProvaAtiva({ prova: provaCompleta, moduloTitulo: moduloProvaPendente.titulo })
+            }
+          }
+        } else {
+          setAulaAtual(mods[0]?.aulas?.[0] ?? null)
         }
       })
       .catch(err => {
@@ -265,7 +304,10 @@ export function CursoPlayerPage() {
 
   const idxAtual = aulaAtual ? todasAulas.findIndex(a => a.id === aulaAtual.id) : -1
   const podePrev = idxAtual > 0
-  const podeNext = idxAtual < todasAulas.length - 1
+
+  const proximaAula = idxAtual >= 0 && idxAtual < todasAulas.length - 1 ? todasAulas[idxAtual + 1] : null
+  const proximoModuloIdx = proximaAula ? modulos.findIndex(m => m.aulas?.some(a => a.id === proximaAula.id)) : -1
+  const podeNext = !!proximaAula && (proximoModuloIdx === -1 || !isModuloBloqueado(proximoModuloIdx))
 
   const deveBloquearBotao =
     !!aulaAtual?.video_url &&
@@ -305,13 +347,20 @@ export function CursoPlayerPage() {
 
   async function toggleConcluida() {
     if (!aulaAtual || !user || salvando) return
+
+    const moduloAtualIdx = modulos.findIndex(m => m.aulas?.some(a => a.id === aulaAtual.id))
+    if (moduloAtualIdx >= 0 && isModuloBloqueado(moduloAtualIdx) && !concluidas.has(aulaAtual.id)) {
+      showToast('Conclua a avaliação do módulo anterior antes de continuar.', 'error')
+      return
+    }
+
     setSalvando(true)
     try {
       if (concluidas.has(aulaAtual.id)) {
         await modulosService.desmarcarConcluida(user.id, aulaAtual.id)
         setConcluidas(prev => { const n = new Set(prev); n.delete(aulaAtual.id); return n })
       } else {
-        await modulosService.marcarConcluida(user.id, aulaAtual.id)
+        await modulosService.marcarConcluida(aulaAtual.id)
         const novasConcluidas = new Set(concluidas).add(aulaAtual.id)
         setConcluidas(novasConcluidas)
 
