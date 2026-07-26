@@ -176,7 +176,9 @@ export function CursoPlayerPage() {
           }
         }
       })
-      .catch(() => {})
+      .catch(err => {
+        console.error('[CursoPlayer] Falha ao carregar curso/módulos/progresso', { cursoId: id, error: err })
+      })
       .finally(() => setLoading(false))
   }, [id, user])
 
@@ -250,7 +252,10 @@ export function CursoPlayerPage() {
       setTextoResposta('')
       const updated = await perguntasService.getByAula(aulaAtual.id)
       setPerguntas(updated)
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error('[Q&A] Erro ao enviar resposta:', err)
+      showToast('Erro ao enviar resposta.', 'error')
+    }
   }
 
   const todasAulas = getTodasAulas(modulos)
@@ -338,7 +343,10 @@ export function CursoPlayerPage() {
             if (resultado.certificado) {
               showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
             }
-          } catch { /* silent — não bloqueia o fluxo */ }
+          } catch (err) {
+            console.error('[Certificado] Falha ao verificar/emitir certificado', { userId: user.id, cursoId: id, error: err })
+            showToast('Não foi possível verificar/emitir o certificado. Tente novamente ou contate o suporte.', 'error')
+          }
         }
 
         // auto-advance to next lesson
@@ -902,7 +910,10 @@ export function CursoPlayerPage() {
                     showToast('Parabéns! Seu certificado foi emitido. Acesse "Meus Certificados" no painel.', 'success')
                   }
                 })
-                .catch(() => { /* silent */ })
+                .catch(err => {
+                  console.error('[Certificado] Falha ao verificar/emitir certificado', { userId: user!.id, cursoId: id, error: err })
+                  showToast('Não foi possível verificar/emitir o certificado. Tente novamente ou contate o suporte.', 'error')
+                })
             }
           }}
           onFechar={() => {

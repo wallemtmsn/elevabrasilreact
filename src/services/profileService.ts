@@ -3,7 +3,8 @@ import type { Profile, ProfileWithEmail } from '@/types'
 
 export const profileService = {
   async getById(id: string): Promise<Profile | null> {
-    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single()
+    if (error && error.code !== 'PGRST116') throw new Error(error.message)
     return data
   },
 
